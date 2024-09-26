@@ -25,12 +25,12 @@ class _NewBookingState extends State<NewBooking> {
   var _enteredMake = '';
   var _enteredModel = '';
   var _enteredRego = '';
-  var _enteredQuantity = 1;
+  final _enteredQuantity = 1;
   var _isSending = false;
   final List<ServiceItem> serviceOffers = [];
   int _currentStep = 0;
-  int _selectedServiceId = -1;
-  var selectedServiceOffer = null;
+  final int _selectedServiceId = -1;
+  var selectedServiceOffer;
   bool offersLoaded = false;
 
   DateTime bookingDateTime = DateTime.now();

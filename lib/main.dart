@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:workmate_app/booking_list.dart';
+import 'package:workmate_app/widgets/booking_calendar.dart';
 
 void main() {
   runApp(const WorkMateApp());
@@ -22,7 +22,7 @@ class WorkMateApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color.fromARGB(255, 50, 58, 60),
       ),
-      home: const BookingList(),
+      home: const BookingsCalendar(),
     );
   }
 }

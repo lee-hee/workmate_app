@@ -36,7 +36,7 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
 
   List<Event> _getEventsForDay(DateTime day) {
     // Implementation example
-    return [];
+    return []; // Fetch data from server
   }
 
   List<Event> _getEventsForRange(DateTime start, DateTime end) {

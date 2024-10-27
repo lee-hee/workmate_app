@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:table_calendar/table_calendar.dart';
-import 'package:workmate_app/widgets/booking_calendar_container.dart';
 
 class BookingsCalendar extends StatefulWidget {
   const BookingsCalendar({super.key});
@@ -37,12 +36,12 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
 
   List<Event> _getEventsForDay(DateTime day) {
     // Implementation example
-    return kEvents[day] ?? [];
+    return [];
   }
 
   List<Event> _getEventsForRange(DateTime start, DateTime end) {
     // Implementation example
-    final days = daysInRange(start, end);
+    final days = [];
 
     return [
       for (final d in days) ..._getEventsForDay(d),
@@ -91,8 +90,8 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
       body: Column(
         children: [
           TableCalendar<Event>(
-            firstDay: kFirstDay,
-            lastDay: kLastDay,
+            firstDay: DateTime.now(),
+            lastDay: DateTime.now(),
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             rangeStartDay: _rangeStart,
@@ -153,4 +152,8 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
       ),
     );
   }
+}
+
+class Event {
+  var rego;
 }

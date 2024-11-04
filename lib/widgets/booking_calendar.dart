@@ -1,6 +1,12 @@
+import 'dart:collection';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'package:table_calendar/table_calendar.dart';
+import 'package:workmate_app/widgets/booking_calendar_container.dart';
+import 'package:http/http.dart' as http;
 
 class BookingsCalendar extends StatefulWidget {
   const BookingsCalendar({super.key});
@@ -21,10 +27,16 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
   DateTime? _rangeEnd;
   final List<Event> eventsForDate = [];
 
+  final kEvents = LinkedHashMap<DateTime, List<Event>>(
+    equals: isSameDay,
+    hashCode: getHashCode,
+  )..addAll(<DateTime, List<Event>>{});
+
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _getEventsForMonth();
     _selectedEvents = ValueNotifier(_getEventsForDay(_selectedDay!));
   }
 
@@ -34,14 +46,49 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
     super.dispose();
   }
 
+  void _getEventsForMonth() async {
+    final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
+    DateTime startDayOfMonth =
+        new DateTime(_focusedDay.year, _focusedDay.month, 1);
+    DateTime lastDayOfMonth =
+        new DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+    final String formattedStartDay = serverFormater.format(startDayOfMonth);
+    final String formattedEndtDay = serverFormater.format(lastDayOfMonth);
+
+    final url = Uri.http('192.168.0.141:8080',
+        'v1/bookings-within/$formattedStartDay/$formattedEndtDay');
+
+    final response = await http.get(url);
+    print('>>>>>>>> $response');
+
+    if (response.statusCode >= 400) {
+      throw Exception('Failed to fetch bookings. Please try again later.');
+    }
+
+    final List<dynamic> listData = json.decode(response.body);
+
+    // for (final item in listData) {
+    //   eventsForDate.add(Event(
+    //     ownerPhone: item['customerPhone'],
+    //     rego: item['rego'],
+    //   ));
+    // }
+    // setState(() {
+    //   _bookings = loadedItems;
+    //   _isLoading = false;
+    // });
+
+    // return kEvents[day] ?? [];
+  }
+
   List<Event> _getEventsForDay(DateTime day) {
     // Implementation example
-    return []; // Fetch data from server
+    return kEvents[day] ?? [];
   }
 
   List<Event> _getEventsForRange(DateTime start, DateTime end) {
     // Implementation example
-    final days = [];
+    final days = daysInRange(start, end);
 
     return [
       for (final d in days) ..._getEventsForDay(d),
@@ -90,8 +137,8 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
       body: Column(
         children: [
           TableCalendar<Event>(
-            firstDay: DateTime.now(),
-            lastDay: DateTime.now(),
+            firstDay: kFirstDay,
+            lastDay: kLastDay,
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             rangeStartDay: _rangeStart,
@@ -152,8 +199,4 @@ class _BookingsCalendarState extends State<BookingsCalendar> {
       ),
     );
   }
-}
-
-class Event {
-  var rego;
 }

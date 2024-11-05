@@ -13,16 +13,16 @@ class WorkMateApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'WorkMate',
-      theme: ThemeData.dark().copyWith(
+      theme: ThemeData.light().copyWith(
         //useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromARGB(255, 147, 229, 250),
-          brightness: Brightness.dark,
-          surface: const Color.fromARGB(255, 42, 51, 59),
+          seedColor: const Color.fromARGB(255, 97, 100, 101),
+          brightness: Brightness.light,
+          surface: const Color.fromARGB(255, 163, 175, 185),
         ),
-        scaffoldBackgroundColor: const Color.fromARGB(255, 50, 58, 60),
+        scaffoldBackgroundColor: const Color.fromARGB(255, 209, 229, 244),
       ),
-      home: const BookingsCalendar(),
+      home: TableComplexExample(),
     );
   }
 }

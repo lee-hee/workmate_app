@@ -1,65 +1,64 @@
+// Copyright 2019 Aleksander Woźniak
+// SPDX-License-Identifier: Apache-2.0
+
 import 'dart:collection';
-import 'dart:convert';
+
 import 'package:intl/intl.dart';
-import 'package:jiffy/jiffy.dart';
-
-import 'package:table_calendar/table_calendar.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
+/// Example event class.
 class Event {
-  final String rego;
-  final String ownerPhone;
+  final String title;
+  final String phone;
+  final String bookingRef;
 
-  const Event({required this.rego, required this.ownerPhone});
+  const Event(this.title, this.phone, this.bookingRef);
 
   @override
-  String toString() => 'Rego:$rego Phone:$ownerPhone';
+  String toString() => title + phone + bookingRef;
 }
 
-// final kEvents = LinkedHashMap<DateTime, List<Event>>(
-//   equals: isSameDay,
-//   hashCode: getHashCode,
-// )..addAll(_kEventSource);
+final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
 
-// final _kEventSource = Map.fromIterable(List.generate(50, (index) => index),
-//     key: (item) => DateTime.utc(kFirstDay.year, kFirstDay.month, item * 5),
-//     value: (item) => List.generate(
-//         item % 4 + 1, (index) => Event(rego: '2rtyg', ownerPhone: '5678')))
-//   ..addAll({
-//     kToday: [const Event(rego: '2rtyg', ownerPhone: '5678')],
-//   });
+/// Example events.
+///
+/// Using a [LinkedHashMap] is highly recommended if you decide to use a map.
+Map<DateTime, List<Event>> kEvents = <DateTime, List<Event>>{};
 
-void _getEventsForMonth(DateTime focusDay) async {
-  final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
-  DateTime startDayOfMonth = new DateTime(focusDay.year, focusDay.month, 1);
-  DateTime lastDayOfMonth = new DateTime(focusDay.year, focusDay.month + 1, 0);
-  final String formattedStartDay = serverFormater.format(startDayOfMonth);
-  final String formattedEndtDay = serverFormater.format(lastDayOfMonth);
-
-  final url = Uri.http('192.168.0.141:8080',
+Future<void> fetchBookingsForFocusedMonth(DateTime focusedDay) async {
+  var rangeStartDay = DateTime(focusedDay.year, focusedDay.month, 1);
+  var rangeEndDay = DateTime(focusedDay.year, focusedDay.month + 1, 0);
+  final String formattedStartDay = serverFormater.format(rangeStartDay);
+  final String formattedEndtDay = serverFormater.format(rangeEndDay);
+  final url = Uri.http('localhost:8080',
       'v1/bookings-within/$formattedStartDay/$formattedEndtDay');
+  print('formattedStartDay $formattedStartDay');
+  print('formattedStartDay $formattedEndtDay');
 
   final response = await http.get(url);
   print('>>>>>>>> $response');
 
-  if (response.statusCode >= 400) {
+  if (response.statusCode != 200) {
     throw Exception('Failed to fetch bookings. Please try again later.');
   }
 
-  final List<dynamic> listData = json.decode(response.body);
+  final Map bookingsGroupedByDate = json.decode(response.body);
 
-  // for (final item in listData) {
-  //   eventsForDate.add(Event(
-  //     ownerPhone: item['customerPhone'],
-  //     rego: item['rego'],
-  //   ));
-  // }
-  // setState(() {
-  //   _bookings = loadedItems;
-  //   _isLoading = false;
-  // });
+  bookingsGroupedByDate.forEach((key, value) {
+    print('>>>>>>>> $key');
+    print('>>>>>>>> $value');
 
-  //return kEvents[day] ?? [];
+    List<Event> bookingEvents = [];
+    for (final booking in value) {
+      bookingEvents.add(Event(booking['rego'], booking['customerPhone'],
+          booking['bookingReferenceNumber']));
+    }
+    DateTime bookingDate = DateTime.parse(key);
+    DateTime dateToConsider =
+        new DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
+    kEvents[dateToConsider] = bookingEvents;
+  });
 }
 
 int getHashCode(DateTime key) {

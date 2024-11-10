@@ -9,14 +9,15 @@ import 'dart:convert';
 
 /// Example event class.
 class Event {
-  final String title;
+  final String rego;
   final String phone;
   final String bookingRef;
+  final String serviceType;
 
-  const Event(this.title, this.phone, this.bookingRef);
+  const Event(this.rego, this.phone, this.bookingRef, this.serviceType);
 
   @override
-  String toString() => title + phone + bookingRef;
+  String toString() => rego + phone + bookingRef;
 }
 
 final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
@@ -25,6 +26,7 @@ final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
 ///
 /// Using a [LinkedHashMap] is highly recommended if you decide to use a map.
 Map<DateTime, List<Event>> kEvents = <DateTime, List<Event>>{};
+List<Event> events = [];
 
 Future<void> fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   var rangeStartDay = DateTime(focusedDay.year, focusedDay.month, 1);
@@ -33,26 +35,24 @@ Future<void> fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   final String formattedEndtDay = serverFormater.format(rangeEndDay);
   final url = Uri.http('localhost:8080',
       'v1/bookings-within/$formattedStartDay/$formattedEndtDay');
-  print('formattedStartDay $formattedStartDay');
-  print('formattedStartDay $formattedEndtDay');
-
+  kEvents.clear();
+  events.clear();
   final response = await http.get(url);
-  print('>>>>>>>> $response');
 
   if (response.statusCode != 200) {
     throw Exception('Failed to fetch bookings. Please try again later.');
   }
+  print('fetchBookingsForFocusedMonth >>>>>> $response');
 
   final Map bookingsGroupedByDate = json.decode(response.body);
 
   bookingsGroupedByDate.forEach((key, value) {
-    print('>>>>>>>> $key');
-    print('>>>>>>>> $value');
-
     List<Event> bookingEvents = [];
     for (final booking in value) {
-      bookingEvents.add(Event(booking['rego'], booking['customerPhone'],
-          booking['bookingReferenceNumber']));
+      var event = Event(booking['rego'], booking['customerPhone'],
+          booking['bookingReferenceNumber'], 'Service');
+      bookingEvents.add(event);
+      events.add(event);
     }
     DateTime bookingDate = DateTime.parse(key);
     DateTime dateToConsider =

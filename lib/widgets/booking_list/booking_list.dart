@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:workmate_app/model/booking.dart';
-import 'package:workmate_app/widgets/new_booking.dart';
+import 'package:workmate_app/widgets/new_booking/new_booking.dart';
 
 class BookingList extends StatefulWidget {
   const BookingList({super.key});
@@ -60,22 +60,6 @@ class _BookingListState extends State<BookingList> {
     return loadedItems;
   }
 
-  void _addItem() async {
-    final newItem = await Navigator.of(context)
-        .push<Booking>(
-          MaterialPageRoute(
-            builder: (ctx) => const NewBooking(),
-          ),
-        )
-        .then(
-          (value) => {
-            setState(() {
-              _loadItems();
-            })
-          },
-        );
-  }
-
   void _removeItem(Booking item) {}
   Future<void> _pullRefresh() async {
     List<Booking> newBookings = await _loadItems();
@@ -96,12 +80,12 @@ class _BookingListState extends State<BookingList> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bookings'),
-        actions: [
-          IconButton(
-            onPressed: _addItem,
-            icon: const Icon(Icons.add),
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     onPressed: _addItem,
+        //     icon: const Icon(Icons.add),
+        //   ),
+        // ],
       ),
       body: RefreshIndicator(
         onRefresh: _pullRefresh,

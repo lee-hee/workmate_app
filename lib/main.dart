@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:workmate_app/widgets/booking_calendar.dart';
+import 'package:workmate_app/widgets/home_view/work_action_home.dart';
 
 void main() {
   runApp(const WorkMateApp());
@@ -22,7 +22,7 @@ class WorkMateApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color.fromARGB(255, 209, 229, 244),
       ),
-      home: TableComplexExample(),
+      home: const WorkActionHomeScreen(),
     );
   }
 }

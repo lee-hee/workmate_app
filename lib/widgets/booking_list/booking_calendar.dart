@@ -6,14 +6,20 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:workmate_app/widgets/booking_calendar_container.dart';
+import 'package:workmate_app/model/booking.dart';
+import 'package:workmate_app/widgets/new_booking/booking_item.dart';
+import 'package:workmate_app/widgets/booking_list/booking_calendar_container.dart';
+import 'package:workmate_app/widgets/new_booking/new_booking.dart';
 
-class TableComplexExample extends StatefulWidget {
+class BookingCalender extends StatefulWidget {
+  const BookingCalender({super.key});
+
   @override
-  _TableComplexExampleState createState() => _TableComplexExampleState();
+  // ignore: library_private_types_in_public_api
+  _BookingCalenderState createState() => _BookingCalenderState();
 }
 
-class _TableComplexExampleState extends State<TableComplexExample> {
+class _BookingCalenderState extends State<BookingCalender> {
   late final ValueNotifier<List<Event>> _selectedEvents;
   final ValueNotifier<DateTime> _focusedDay = ValueNotifier(DateTime.now());
   final Set<DateTime> _selectedDays = LinkedHashSet<DateTime>(
@@ -48,20 +54,16 @@ class _TableComplexExampleState extends State<TableComplexExample> {
   List<Event> _getEventsForDay(DateTime day) {
     DateTime dateToConsider = new DateTime(day.year, day.month, day.day);
     var list = kEvents[dateToConsider] ?? [];
-    print('>>>>>>>> _getEventsForDay $list');
     return list;
   }
 
   List<Event> _getEventsForDays(Iterable<DateTime> days) {
-    print('###################################### _getEventsForDays $days');
     return [
       for (final d in days) ..._getEventsForDay(d),
     ];
   }
 
   List<Event> _getEventsForRange(DateTime start, DateTime end) {
-    print(
-        '??????????????????<<<<<>>>>>>>>>>>>>>>>>?????????????????????????????????????? _getEventsForRange $start , $end');
     final days = daysInRange(start, end);
     return _getEventsForDays(days);
   }
@@ -88,27 +90,26 @@ class _TableComplexExampleState extends State<TableComplexExample> {
       _rangeEnd = null;
       _rangeSelectionMode = RangeSelectionMode.toggledOff;
     });
-
-    // if (start != null && end != null) {
-    //   _selectedEvents.value = _getEventsForRange(start, end);
-    // } else if (start != null) {
-    //   _selectedEvents.value = _getEventsForDay(start);
-    // } else if (end != null) {
-    //   _selectedEvents.value = _getEventsForDay(end);
-    // }
   }
 
   void _onPageChanged(DateTime focusedDay) {
-    print('@@@@@@@@@@@@@@@@@@@@@ _onPageChanged $focusedDay');
     _focusedDay.value = focusedDay;
+  }
+
+  void _addItem() async {
+    final newItem = await Navigator.of(context).push<Booking>(
+      MaterialPageRoute(
+        builder: (ctx) => const NewBooking(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookings calender'),
-      ),
+      appBar: AppBar(title: const Text('Bookings calender'), actions: [
+        IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
+      ]),
       body: Column(
         children: [
           ValueListenableBuilder<DateTime>(
@@ -185,9 +186,18 @@ class _TableComplexExampleState extends State<TableComplexExample> {
                         border: Border.all(),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
-                      child: ListTile(
-                        onTap: () => print('${value[index]}'),
-                        title: Text('${value[index]}'),
+                      child: BookingListItem(
+                        thumbnail: const Icon(
+                          Icons.car_repair_outlined,
+                          color: Colors.green,
+                          size: 30.0,
+                        ),
+                        rego: value[index].rego,
+                        serviceType: 'Service type name',
+                        bookingRef: value[index].bookingRef,
+                        bookingTime: '11/55/2024 10:15 AM',
+                        customerPhone: '0410117403',
+                        duration: '30 mins',
                       ),
                     );
                   },

@@ -25,11 +25,8 @@ class _NewBookingState extends State<NewBooking> {
   var _enteredMake = '';
   var _enteredModel = '';
   var _enteredRego = '';
-  final _enteredQuantity = 1;
-  var _isSending = false;
   final List<ServiceItem> serviceOffers = [];
   int _currentStep = 0;
-  final int _selectedServiceId = -1;
   var selectedServiceOffer;
   bool offersLoaded = false;
 
@@ -40,7 +37,7 @@ class _NewBookingState extends State<NewBooking> {
 
   void _loadServiceItems(String make, String model) async {
     final url =
-        Uri.http('192.168.0.141:8080', '/config/service-offers/$make/$model');
+        Uri.http('localhost:8080', '/config/service-offers/$make/$model');
 
     final response = await http.get(url);
 
@@ -59,12 +56,11 @@ class _NewBookingState extends State<NewBooking> {
         selectedServiceOffer ??= serviceOffers.first.serviceItemId;
       });
     }
-
     offersLoaded = true;
   }
 
   Future<void> _createCustomer() async {
-    final url = Uri.http('192.168.0.141:8080', '/v1/customer');
+    final url = Uri.http('localhost:8080', '/v1/customer');
     http.post(url,
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +75,7 @@ class _NewBookingState extends State<NewBooking> {
   }
 
   Future<void> _createServiceVehical() async {
-    final url = Uri.http('192.168.0.141:8080', '/v1/vehicle');
+    final url = Uri.http('localhost:8080', '/v1/vehicle');
     http.post(url,
         headers: {
           'Content-Type': 'application/json',
@@ -94,8 +90,7 @@ class _NewBookingState extends State<NewBooking> {
   }
 
   Future<int> _createBooking() async {
-    final url = Uri.http('192.168.0.141:8080', '/v1/booking');
-
+    final url = Uri.http('localhost:8080', '/v1/booking');
     final String formattedBookingDateTime =
         serverDateFormater.format(bookingDateTime);
     final response = await http.post(url,
@@ -111,45 +106,6 @@ class _NewBookingState extends State<NewBooking> {
           },
         ));
     return response.statusCode;
-  }
-
-  void _saveItem() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      setState(() {
-        _isSending = true;
-      });
-      final url = Uri.https(
-          'flutter-prep-default-rtdb.firebaseio.com', 'shopping-list.json');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(
-          {
-            'name': '',
-            'quantity': '',
-            'category': '',
-          },
-        ),
-      );
-
-      final Map<String, dynamic> resData = json.decode(response.body);
-
-      if (!context.mounted) {
-        return;
-      }
-
-      // Navigator.of(context).pop(
-      //   Booking(
-      //     id: resData['name'],
-      //     name: _enteredName,
-      //     quantity: _enteredQuantity,
-      //     category: _selectedCategory,
-      //   ),
-      // );
-    }
   }
 
   @override

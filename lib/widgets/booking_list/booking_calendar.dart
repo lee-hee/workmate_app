@@ -28,6 +28,8 @@ class _BookingCalenderState extends State<BookingCalender> {
     hashCode: getHashCode,
   );
 
+  var _isLoading = true;
+
   late PageController _pageController;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOff;
@@ -42,6 +44,7 @@ class _BookingCalenderState extends State<BookingCalender> {
     fetchBookingsForFocusedMonth(_focusedDay.value).then((events) {
       setState(() {
         _selectedEvents.value = events;
+        _isLoading = false;
       });
     });
   }
@@ -99,6 +102,12 @@ class _BookingCalenderState extends State<BookingCalender> {
 
   void _onPageChanged(DateTime focusedDay) {
     _focusedDay.value = focusedDay;
+    fetchBookingsForFocusedMonth(_focusedDay.value).then((events) {
+      setState(() {
+        _selectedEvents.value = events;
+        _isLoading = false;
+      });
+    });
   }
 
   void _addItem() async {
@@ -111,11 +120,12 @@ class _BookingCalenderState extends State<BookingCalender> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Bookings calender'), actions: [
-        IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
-      ]),
-      body: Column(
+    print('BuildContext >>>>>> on _BookingCalenderState');
+    Widget content = const Center(child: Text('Searching for bookings .... '));
+    if (_isLoading) {
+      content = const Center(child: CircularProgressIndicator());
+    } else {
+      content = Column(
         children: [
           ValueListenableBuilder<DateTime>(
             valueListenable: _focusedDay,
@@ -211,7 +221,13 @@ class _BookingCalenderState extends State<BookingCalender> {
             ),
           ),
         ],
-      ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bookings calender'), actions: [
+        IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
+      ]),
+      body: content,
     );
   }
 }

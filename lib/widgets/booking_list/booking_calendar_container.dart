@@ -42,10 +42,7 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   if (response.statusCode != 200) {
     throw Exception('Failed to fetch bookings. Please try again later.');
   }
-  print('fetchBookingsForFocusedMonth >>>>>> $response');
-
   final Map bookingsGroupedByDate = json.decode(response.body);
-
   bookingsGroupedByDate.forEach((key, value) {
     List<Event> bookingEvents = [];
     for (final booking in value) {

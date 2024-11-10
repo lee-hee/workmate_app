@@ -28,7 +28,7 @@ final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
 Map<DateTime, List<Event>> kEvents = <DateTime, List<Event>>{};
 List<Event> events = [];
 
-Future<void> fetchBookingsForFocusedMonth(DateTime focusedDay) async {
+Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   var rangeStartDay = DateTime(focusedDay.year, focusedDay.month, 1);
   var rangeEndDay = DateTime(focusedDay.year, focusedDay.month + 1, 0);
   final String formattedStartDay = serverFormater.format(rangeStartDay);
@@ -59,6 +59,8 @@ Future<void> fetchBookingsForFocusedMonth(DateTime focusedDay) async {
         new DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
     kEvents[dateToConsider] = bookingEvents;
   });
+
+  return events;
 }
 
 int getHashCode(DateTime key) {

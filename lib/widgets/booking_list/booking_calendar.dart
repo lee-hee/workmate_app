@@ -1,6 +1,7 @@
 // Copyright 2019 Aleksander Woźniak
 // SPDX-License-Identifier: Apache-2.0
 
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
@@ -37,8 +38,12 @@ class _BookingCalenderState extends State<BookingCalender> {
   void initState() {
     super.initState();
     _selectedDays.add(_focusedDay.value);
-    fetchBookingsForFocusedMonth(_focusedDay.value);
-    _selectedEvents = ValueNotifier(_getEventsForDay(_focusedDay.value));
+    _selectedEvents = ValueNotifier(events);
+    fetchBookingsForFocusedMonth(_focusedDay.value).then((events) {
+      setState(() {
+        _selectedEvents.value = events;
+      });
+    });
   }
 
   @override

@@ -160,30 +160,48 @@ class _BookingCalenderState extends State<BookingCalender> {
             },
           ),
           TableCalendar<Event>(
-            firstDay: kFirstDay,
-            lastDay: kLastDay,
-            focusedDay: _focusedDay.value,
-            headerVisible: true,
-            selectedDayPredicate: (day) => _selectedDays.contains(day),
-            rangeStartDay: _rangeStart,
-            rangeEndDay: _rangeEnd,
-            calendarFormat: _calendarFormat,
-            rangeSelectionMode: _rangeSelectionMode,
-            eventLoader: _getEventsForDay,
-            // holidayPredicate: (day) {
-            //   // Every 20th day of the month will be treated as a holiday
-            //   return day.day == 20;
-            // },
-            onDaySelected: _onDaySelected,
-            onRangeSelected: _onRangeSelected,
-            onCalendarCreated: (controller) => _pageController = controller,
-            onPageChanged: (focusedDay) => _onPageChanged(focusedDay),
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() => _calendarFormat = format);
-              }
-            },
-          ),
+              firstDay: kFirstDay,
+              lastDay: kLastDay,
+              focusedDay: _focusedDay.value,
+              headerVisible: true,
+              selectedDayPredicate: (day) => _selectedDays.contains(day),
+              rangeStartDay: _rangeStart,
+              rangeEndDay: _rangeEnd,
+              calendarFormat: _calendarFormat,
+              rangeSelectionMode: _rangeSelectionMode,
+              eventLoader: _getEventsForDay,
+              // holidayPredicate: (day) {
+              //   // Every 20th day of the month will be treated as a holiday
+              //   return day.day == 20;
+              // },
+              onDaySelected: _onDaySelected,
+              onRangeSelected: _onRangeSelected,
+              onCalendarCreated: (controller) => _pageController = controller,
+              onPageChanged: (focusedDay) => _onPageChanged(focusedDay),
+              onFormatChanged: (format) {
+                if (_calendarFormat != format) {
+                  setState(() => _calendarFormat = format);
+                }
+              },
+              calendarStyle: const CalendarStyle(
+                markersAlignment: Alignment.bottomRight,
+              ),
+              calendarBuilders: CalendarBuilders(
+                markerBuilder: (context, day, events) => events.isNotEmpty
+                    ? Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: Colors.lightBlue,
+                        ),
+                        child: Text(
+                          '${events.length}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      )
+                    : null,
+              )),
           const SizedBox(height: 8.0),
           Expanded(
             child: ValueListenableBuilder<List<Event>>(

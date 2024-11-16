@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:workmate_app/widgets/work_item/work_item.dart';
 
 class _BookingDescription extends StatelessWidget {
   const _BookingDescription({
@@ -85,8 +86,11 @@ class BookingListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        const snackBar = SnackBar(content: Text('Taped on the Item'));
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (ctx) => const WorkItemPage(),
+          ),
+        );
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10.0),

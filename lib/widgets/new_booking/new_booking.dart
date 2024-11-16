@@ -25,9 +25,9 @@ class _NewBookingState extends State<NewBooking> {
   var _enteredMake = '';
   var _enteredModel = '';
   var _enteredRego = '';
-  final List<ServiceItem> serviceOffers = [];
+  final List<ServiceOffer> serviceOffers = [];
   int _currentStep = 0;
-  var selectedServiceOffer;
+  var selectedServiceItemId;
   bool offersLoaded = false;
 
   DateTime bookingDateTime = DateTime.now();
@@ -50,10 +50,9 @@ class _NewBookingState extends State<NewBooking> {
     for (final item in serviceOffersData) {
       setState(() {
         serviceOffers.add(
-          ServiceItem(
-              serviceItemId: item['id'], serviceItem: item['serviceName']),
+          ServiceOffer(id: item['id'], name: item['serviceName']),
         );
-        selectedServiceOffer ??= serviceOffers.first.serviceItemId;
+        selectedServiceItemId ??= serviceOffers.first.id;
       });
     }
     offersLoaded = true;
@@ -101,7 +100,7 @@ class _NewBookingState extends State<NewBooking> {
           {
             'customerPhone': _enteredPhoneNumber,
             'rego': _enteredRego,
-            'serviceItemId': selectedServiceOffer,
+            'serviceItemId': selectedServiceItemId,
             'bookingDateTime': formattedBookingDateTime
           },
         ));
@@ -298,22 +297,22 @@ class _NewBookingState extends State<NewBooking> {
                 title: const Text('Service'),
                 content: Column(children: [
                   DropdownButtonFormField(
-                    value: selectedServiceOffer,
+                    value: selectedServiceItemId,
                     items: [
                       for (final serviceOffer in serviceOffers)
                         DropdownMenuItem(
-                          value: serviceOffer.serviceItemId,
+                          value: serviceOffer.id,
                           child: Row(
                             children: [
                               const SizedBox(width: 6),
-                              Text(serviceOffer.serviceItem),
+                              Text(serviceOffer.name),
                             ],
                           ),
                         ),
                     ],
                     onChanged: (value) {
                       setState(() {
-                        selectedServiceOffer = value!;
+                        selectedServiceItemId = value!;
                       });
                     },
                   ),

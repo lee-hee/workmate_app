@@ -12,9 +12,13 @@ class Event {
   final String rego;
   final String phone;
   final String bookingRef;
-  final String serviceType;
+  final String bookingTime;
+  final String serviceItemId;
+  final String serviceName;
+  final String servicDuration;
 
-  const Event(this.rego, this.phone, this.bookingRef, this.serviceType);
+  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemId,
+      this.serviceName, this.servicDuration, this.bookingTime);
 
   @override
   String toString() => rego + phone + bookingRef;
@@ -46,8 +50,15 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   bookingsGroupedByDate.forEach((key, value) {
     List<Event> bookingEvents = [];
     for (final booking in value) {
-      var event = Event(booking['rego'], booking['customerPhone'],
-          booking['bookingReferenceNumber'], 'Service');
+      var event = Event(
+        booking['rego'],
+        booking['customerPhone'],
+        booking['bookingReferenceNumber'],
+        booking['serviceItemId'],
+        booking['serviceName'],
+        booking['serviceDuration'],
+        booking['bookingDateTime'],
+      );
       bookingEvents.add(event);
       events.add(event);
     }

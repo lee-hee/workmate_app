@@ -25,12 +25,9 @@ class _NewBookingState extends State<NewBooking> {
   var _enteredMake = '';
   var _enteredModel = '';
   var _enteredRego = '';
-  final _enteredQuantity = 1;
-  var _isSending = false;
-  final List<ServiceItem> serviceOffers = [];
+  final List<ServiceOffer> serviceOffers = [];
   int _currentStep = 0;
-  final int _selectedServiceId = -1;
-  var selectedServiceOffer;
+  var selectedServiceItemId;
   bool offersLoaded = false;
 
   DateTime bookingDateTime = DateTime.now();
@@ -40,7 +37,7 @@ class _NewBookingState extends State<NewBooking> {
 
   void _loadServiceItems(String make, String model) async {
     final url =
-        Uri.http('192.168.0.141:8080', '/config/service-offers/$make/$model');
+        Uri.http('localhost:8080', '/config/service-offers/$make/$model');
 
     final response = await http.get(url);
 
@@ -53,18 +50,16 @@ class _NewBookingState extends State<NewBooking> {
     for (final item in serviceOffersData) {
       setState(() {
         serviceOffers.add(
-          ServiceItem(
-              serviceItemId: item['id'], serviceItem: item['serviceName']),
+          ServiceOffer(id: item['id'], name: item['serviceName']),
         );
-        selectedServiceOffer ??= serviceOffers.first.serviceItemId;
+        selectedServiceItemId ??= serviceOffers.first.id;
       });
     }
-
     offersLoaded = true;
   }
 
   Future<void> _createCustomer() async {
-    final url = Uri.http('192.168.0.141:8080', '/v1/customer');
+    final url = Uri.http('localhost:8080', '/v1/customer');
     http.post(url,
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +74,7 @@ class _NewBookingState extends State<NewBooking> {
   }
 
   Future<void> _createServiceVehical() async {
-    final url = Uri.http('192.168.0.141:8080', '/v1/vehicle');
+    final url = Uri.http('localhost:8080', '/v1/vehicle');
     http.post(url,
         headers: {
           'Content-Type': 'application/json',
@@ -94,8 +89,7 @@ class _NewBookingState extends State<NewBooking> {
   }
 
   Future<int> _createBooking() async {
-    final url = Uri.http('192.168.0.141:8080', '/v1/booking');
-
+    final url = Uri.http('localhost:8080', '/v1/booking');
     final String formattedBookingDateTime =
         serverDateFormater.format(bookingDateTime);
     final response = await http.post(url,
@@ -106,50 +100,11 @@ class _NewBookingState extends State<NewBooking> {
           {
             'customerPhone': _enteredPhoneNumber,
             'rego': _enteredRego,
-            'serviceItemId': selectedServiceOffer,
+            'serviceItemId': selectedServiceItemId,
             'bookingDateTime': formattedBookingDateTime
           },
         ));
     return response.statusCode;
-  }
-
-  void _saveItem() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      setState(() {
-        _isSending = true;
-      });
-      final url = Uri.https(
-          'flutter-prep-default-rtdb.firebaseio.com', 'shopping-list.json');
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(
-          {
-            'name': '',
-            'quantity': '',
-            'category': '',
-          },
-        ),
-      );
-
-      final Map<String, dynamic> resData = json.decode(response.body);
-
-      if (!context.mounted) {
-        return;
-      }
-
-      // Navigator.of(context).pop(
-      //   Booking(
-      //     id: resData['name'],
-      //     name: _enteredName,
-      //     quantity: _enteredQuantity,
-      //     category: _selectedCategory,
-      //   ),
-      // );
-    }
   }
 
   @override
@@ -342,22 +297,22 @@ class _NewBookingState extends State<NewBooking> {
                 title: const Text('Service'),
                 content: Column(children: [
                   DropdownButtonFormField(
-                    value: selectedServiceOffer,
+                    value: selectedServiceItemId,
                     items: [
                       for (final serviceOffer in serviceOffers)
                         DropdownMenuItem(
-                          value: serviceOffer.serviceItemId,
+                          value: serviceOffer.id,
                           child: Row(
                             children: [
                               const SizedBox(width: 6),
-                              Text(serviceOffer.serviceItem),
+                              Text(serviceOffer.name),
                             ],
                           ),
                         ),
                     ],
                     onChanged: (value) {
                       setState(() {
-                        selectedServiceOffer = value!;
+                        selectedServiceItemId = value!;
                       });
                     },
                   ),

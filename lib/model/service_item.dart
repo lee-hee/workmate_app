@@ -1,5 +1,5 @@
-class ServiceItem {
-  const ServiceItem({required this.serviceItemId, required this.serviceItem});
-  final int serviceItemId;
-  final String serviceItem;
+class ServiceOffer {
+  const ServiceOffer({required this.id, required this.name});
+  final int id;
+  final String name;
 }

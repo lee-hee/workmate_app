@@ -1,25 +1,34 @@
 // Copyright 2019 Aleksander Woźniak
 // SPDX-License-Identifier: Apache-2.0
 
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:workmate_app/widgets/booking_calendar_container.dart';
+import 'package:workmate_app/model/booking.dart';
+import 'package:workmate_app/widgets/new_booking/booking_item.dart';
+import 'package:workmate_app/widgets/booking_list/booking_calendar_container.dart';
+import 'package:workmate_app/widgets/new_booking/new_booking.dart';
 
-class TableComplexExample extends StatefulWidget {
+class BookingCalender extends StatefulWidget {
+  const BookingCalender({super.key});
+
   @override
-  _TableComplexExampleState createState() => _TableComplexExampleState();
+  // ignore: library_private_types_in_public_api
+  _BookingCalenderState createState() => _BookingCalenderState();
 }
 
-class _TableComplexExampleState extends State<TableComplexExample> {
+class _BookingCalenderState extends State<BookingCalender> {
   late final ValueNotifier<List<Event>> _selectedEvents;
   final ValueNotifier<DateTime> _focusedDay = ValueNotifier(DateTime.now());
   final Set<DateTime> _selectedDays = LinkedHashSet<DateTime>(
     equals: isSameDay,
     hashCode: getHashCode,
   );
+
+  var _isLoading = true;
 
   late PageController _pageController;
   CalendarFormat _calendarFormat = CalendarFormat.month;
@@ -31,8 +40,13 @@ class _TableComplexExampleState extends State<TableComplexExample> {
   void initState() {
     super.initState();
     _selectedDays.add(_focusedDay.value);
-    fetchBookingsForFocusedMonth(_focusedDay.value);
-    _selectedEvents = ValueNotifier(_getEventsForDay(_focusedDay.value));
+    _selectedEvents = ValueNotifier(events);
+    fetchBookingsForFocusedMonth(_focusedDay.value).then((events) {
+      setState(() {
+        _selectedEvents.value = events;
+        _isLoading = false;
+      });
+    });
   }
 
   @override
@@ -48,20 +62,16 @@ class _TableComplexExampleState extends State<TableComplexExample> {
   List<Event> _getEventsForDay(DateTime day) {
     DateTime dateToConsider = new DateTime(day.year, day.month, day.day);
     var list = kEvents[dateToConsider] ?? [];
-    print('>>>>>>>> _getEventsForDay $list');
     return list;
   }
 
   List<Event> _getEventsForDays(Iterable<DateTime> days) {
-    print('###################################### _getEventsForDays $days');
     return [
       for (final d in days) ..._getEventsForDay(d),
     ];
   }
 
   List<Event> _getEventsForRange(DateTime start, DateTime end) {
-    print(
-        '??????????????????<<<<<>>>>>>>>>>>>>>>>>?????????????????????????????????????? _getEventsForRange $start , $end');
     final days = daysInRange(start, end);
     return _getEventsForDays(days);
   }
@@ -88,28 +98,34 @@ class _TableComplexExampleState extends State<TableComplexExample> {
       _rangeEnd = null;
       _rangeSelectionMode = RangeSelectionMode.toggledOff;
     });
-
-    // if (start != null && end != null) {
-    //   _selectedEvents.value = _getEventsForRange(start, end);
-    // } else if (start != null) {
-    //   _selectedEvents.value = _getEventsForDay(start);
-    // } else if (end != null) {
-    //   _selectedEvents.value = _getEventsForDay(end);
-    // }
   }
 
   void _onPageChanged(DateTime focusedDay) {
-    print('@@@@@@@@@@@@@@@@@@@@@ _onPageChanged $focusedDay');
     _focusedDay.value = focusedDay;
+    fetchBookingsForFocusedMonth(_focusedDay.value).then((events) {
+      setState(() {
+        _selectedEvents.value = events;
+        _isLoading = false;
+      });
+    });
+  }
+
+  void _addItem() async {
+    final newItem = await Navigator.of(context).push<Booking>(
+      MaterialPageRoute(
+        builder: (ctx) => const NewBooking(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookings calender'),
-      ),
-      body: Column(
+    print('BuildContext >>>>>> on _BookingCalenderState');
+    Widget content = const Center(child: Text('Searching for bookings .... '));
+    if (_isLoading) {
+      content = const Center(child: CircularProgressIndicator());
+    } else {
+      content = Column(
         children: [
           ValueListenableBuilder<DateTime>(
             valueListenable: _focusedDay,
@@ -144,30 +160,48 @@ class _TableComplexExampleState extends State<TableComplexExample> {
             },
           ),
           TableCalendar<Event>(
-            firstDay: kFirstDay,
-            lastDay: kLastDay,
-            focusedDay: _focusedDay.value,
-            headerVisible: true,
-            selectedDayPredicate: (day) => _selectedDays.contains(day),
-            rangeStartDay: _rangeStart,
-            rangeEndDay: _rangeEnd,
-            calendarFormat: _calendarFormat,
-            rangeSelectionMode: _rangeSelectionMode,
-            eventLoader: _getEventsForDay,
-            // holidayPredicate: (day) {
-            //   // Every 20th day of the month will be treated as a holiday
-            //   return day.day == 20;
-            // },
-            onDaySelected: _onDaySelected,
-            onRangeSelected: _onRangeSelected,
-            onCalendarCreated: (controller) => _pageController = controller,
-            onPageChanged: (focusedDay) => _onPageChanged(focusedDay),
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() => _calendarFormat = format);
-              }
-            },
-          ),
+              firstDay: kFirstDay,
+              lastDay: kLastDay,
+              focusedDay: _focusedDay.value,
+              headerVisible: true,
+              selectedDayPredicate: (day) => _selectedDays.contains(day),
+              rangeStartDay: _rangeStart,
+              rangeEndDay: _rangeEnd,
+              calendarFormat: _calendarFormat,
+              rangeSelectionMode: _rangeSelectionMode,
+              eventLoader: _getEventsForDay,
+              // holidayPredicate: (day) {
+              //   // Every 20th day of the month will be treated as a holiday
+              //   return day.day == 20;
+              // },
+              onDaySelected: _onDaySelected,
+              onRangeSelected: _onRangeSelected,
+              onCalendarCreated: (controller) => _pageController = controller,
+              onPageChanged: (focusedDay) => _onPageChanged(focusedDay),
+              onFormatChanged: (format) {
+                if (_calendarFormat != format) {
+                  setState(() => _calendarFormat = format);
+                }
+              },
+              calendarStyle: const CalendarStyle(
+                markersAlignment: Alignment.bottomRight,
+              ),
+              calendarBuilders: CalendarBuilders(
+                markerBuilder: (context, day, events) => events.isNotEmpty
+                    ? Container(
+                        width: 24,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: Colors.lightBlue,
+                        ),
+                        child: Text(
+                          '${events.length}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      )
+                    : null,
+              )),
           const SizedBox(height: 8.0),
           Expanded(
             child: ValueListenableBuilder<List<Event>>(
@@ -185,9 +219,18 @@ class _TableComplexExampleState extends State<TableComplexExample> {
                         border: Border.all(),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
-                      child: ListTile(
-                        onTap: () => print('${value[index]}'),
-                        title: Text('${value[index]}'),
+                      child: BookingListItem(
+                        thumbnail: const Icon(
+                          Icons.car_repair_outlined,
+                          color: Colors.green,
+                          size: 30.0,
+                        ),
+                        rego: value[index].rego,
+                        serviceType: value[index].serviceName,
+                        bookingRef: value[index].bookingRef,
+                        bookingTime: value[index].bookingTime,
+                        customerPhone: value[index].phone,
+                        duration: value[index].servicDuration,
                       ),
                     );
                   },
@@ -196,7 +239,13 @@ class _TableComplexExampleState extends State<TableComplexExample> {
             ),
           ),
         ],
-      ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bookings calender'), actions: [
+        IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
+      ]),
+      body: content,
     );
   }
 }

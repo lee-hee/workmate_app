@@ -1,32 +1,6 @@
-// import 'package:flutter/material.dart';
-
-// class ServiceItemScreen extends StatefulWidget {
-//   const ServiceItemScreen({super.key});
-
-//   @override
-//   State<ServiceItemScreen> createState() => _ScaffoldExampleState();
-// }
-
-// class _ScaffoldExampleState extends State<ServiceItemScreen> {
-//   int _count = 0;
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Add a service Item'),
-//       ),
-//       body: Center(child: Text('You have added $_count service items.')),
-//       floatingActionButton: FloatingActionButton(
-//         onPressed: () => setState(() => _count++),
-//         tooltip: 'Service item',
-//         child: const Icon(Icons.add),
-//       ),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert'; // For encoding/decoding JSON
 
 class ServiceItemScreen extends StatefulWidget {
   const ServiceItemScreen({super.key});
@@ -41,8 +15,8 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
   final _formKey = GlobalKey<FormState>();
   final _makeController = TextEditingController();
   final _modelController = TextEditingController();
-  final _serviceController = TextEditingController();
-  final _priceController = TextEditingController();
+  final _serviceNameController = TextEditingController();
+  final _servicePriceController = TextEditingController();
 
   TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
   bool _isDurationValid = true;
@@ -67,30 +41,75 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
     }
   }
 
-  void _saveServiceItem() {
+  void _saveserviceItem() {
     if (_formKey.currentState!.validate() && _validateDuration()) {
       _formKey.currentState!.save();
 
-      final make = _makeController.text;
-      final model = _modelController.text;
-      final service = _serviceController.text;
-      final price = double.tryParse(_priceController.text) ?? 0.0;
-      final duration =
-          '${_selectedDuration.hour}h ${_selectedDuration.minute}m';
+      final make = _makeController.text.trim();
+      final model = _modelController.text.trim();
+      final serviceName = _serviceNameController.text.trim();
+      final servicePrice =
+          double.tryParse(_servicePriceController.text.trim()) ?? 0.0;
+      final serviceDurationMinutes =
+          (_selectedDuration.hour * 60) + _selectedDuration.minute;
 
       // Use this data as required (e.g., send it to an API or save locally)
       print('Make: $make');
       print('Model: $model');
-      print('Service: $service');
-      print('Price: $price');
-      print('Duration: $duration');
+      print('serviceName: $serviceName');
+      print('servicePrice: $servicePrice');
+      print('Duration: $serviceDurationMinutes');
+
+      void sendserviceNameItems(String make, String model, String serviceName,
+          String servicePrice, String serviceDurationMinutes) async {
+        final String url = 'http://localhost:8080/config/service-item';
+
+        // Prepare the data to send
+        final Map<String, dynamic> data = {
+          'make': make,
+          'model': model,
+          'serviceName': serviceName,
+          'servicePrice': servicePrice,
+          'serviceDurationMinutes': serviceDurationMinutes,
+        };
+        // Convert the data to JSON format
+        final String jsonData = json.encode(data);
+
+        // Send a POST request to the API
+        try {
+          final response = await http.post(
+            Uri.parse(url),
+            headers: {
+              'Content-Type':
+                  'application/json', 
+            },
+            body: jsonData,
+          );
+
+          // Check the response
+          if (response.statusCode == 200) {
+            // Successful response
+            print('Data successfully sent to the API');
+          } else {
+            // Handle server errors (4xx or 5xx)
+            print('Failed to send data: ${response.statusCode}');
+          }
+        } catch (e) {
+          // Handle any errors that occur during the request
+          print('Error: $e');
+        }
+      }
+      
+      // Send data to the API
+      sendserviceNameItems(make, model, serviceName, servicePrice.toString(),
+          serviceDurationMinutes.toString());
 
       // Clear the form after saving
       _formKey.currentState?.reset();
       _makeController.clear();
       _modelController.clear();
-      _serviceController.clear();
-      _priceController.clear();
+      _serviceNameController.clear();
+      _servicePriceController.clear();
       setState(() {
         _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
         _isDurationValid = true;
@@ -116,8 +135,8 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
     _formKey.currentState?.reset();
     _makeController.clear();
     _modelController.clear();
-    _serviceController.clear();
-    _priceController.clear();
+    _serviceNameController.clear();
+    _servicePriceController.clear();
     setState(() {
       _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
       _isDurationValid = true;
@@ -172,11 +191,11 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: TextFormField(
-                    controller: _serviceController,
+                    controller: _serviceNameController,
                     decoration: const InputDecoration(labelText: 'Service'),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a valid service';
+                        return 'Please enter a valid Service';
                       }
                       return null;
                     },
@@ -185,14 +204,14 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: TextFormField(
-                    controller: _priceController,
+                    controller: _servicePriceController,
                     decoration: const InputDecoration(labelText: 'Price (\$)'),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null ||
                           value.isEmpty ||
                           double.tryParse(value) == null) {
-                        return 'Please enter a valid price';
+                        return 'Please enter a valid Price';
                       }
                       return null;
                     },
@@ -225,7 +244,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: _saveServiceItem,
+                      onPressed: _saveserviceItem,
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white,
                         backgroundColor: const Color.fromARGB(

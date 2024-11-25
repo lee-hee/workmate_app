@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:workmate_app/model/booking.dart';
-import 'package:workmate_app/widgets/new_booking/booking_item.dart';
+import 'package:workmate_app/widgets/booking_list/booking_item.dart';
 import 'package:workmate_app/widgets/booking_list/booking_calendar_container.dart';
 import 'package:workmate_app/widgets/new_booking/new_booking.dart';
 

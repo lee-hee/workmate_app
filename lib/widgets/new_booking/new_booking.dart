@@ -30,7 +30,7 @@ class _NewBookingState extends State<NewBooking> {
   var selectedServiceItemId;
   bool offersLoaded = false;
 
-  DateTime bookingDateTime = DateTime.now();
+  DateTime? bookingDateTime;
 
   final vehicalMakeController = TextEditingController();
   final vehicalModelController = TextEditingController();
@@ -91,7 +91,7 @@ class _NewBookingState extends State<NewBooking> {
   Future<int> _createBooking() async {
     final url = Uri.http('localhost:8080', '/v1/booking');
     final String formattedBookingDateTime =
-        serverDateFormater.format(bookingDateTime);
+        serverDateFormater.format(bookingDateTime!);
     final response = await http.post(url,
         headers: {
           'Content-Type': 'application/json',
@@ -324,11 +324,17 @@ class _NewBookingState extends State<NewBooking> {
                             minTime: DateTime(2024, 5, 5, 20, 50),
                             maxTime: DateTime(3020, 6, 7, 05, 09),
                             onConfirm: (date) {
-                          bookingDateTime = date;
+                          setState(() {
+                            bookingDateTime = date;
+                          });
                         }, locale: picker.LocaleType.en);
                       },
-                      child: const Text(
-                        'Select a booking date-time',
+                      child: Text(
+                        bookingDateTime != null
+                            ? DateFormat.yMEd()
+                                .add_jms()
+                                .format(bookingDateTime!)
+                            : 'Select a booking date-time',
                       )),
                 ]),
                 isActive: _currentStep >= 2,

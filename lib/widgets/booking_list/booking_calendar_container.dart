@@ -64,7 +64,7 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
     }
     DateTime bookingDate = DateTime.parse(key);
     DateTime dateToConsider =
-        new DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
+        DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
     kEvents[dateToConsider] = bookingEvents;
   });
 

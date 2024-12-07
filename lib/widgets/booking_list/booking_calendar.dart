@@ -60,7 +60,7 @@ class _BookingCalenderState extends State<BookingCalender> {
       _selectedDays.isNotEmpty || _rangeStart != null || _rangeEnd != null;
 
   List<Event> _getEventsForDay(DateTime day) {
-    DateTime dateToConsider = new DateTime(day.year, day.month, day.day);
+    DateTime dateToConsider = DateTime(day.year, day.month, day.day);
     var list = kEvents[dateToConsider] ?? [];
     return list;
   }
@@ -146,13 +146,13 @@ class _BookingCalenderState extends State<BookingCalender> {
                 },
                 onLeftArrowTap: () {
                   _pageController.previousPage(
-                    duration: Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 300),
                     curve: Curves.easeOut,
                   );
                 },
                 onRightArrowTap: () {
                   _pageController.nextPage(
-                    duration: Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 300),
                     curve: Curves.easeOut,
                   );
                 },
@@ -259,14 +259,14 @@ class _CalendarHeader extends StatelessWidget {
   final bool clearButtonVisible;
 
   const _CalendarHeader({
-    Key? key,
+    super.key,
     required this.focusedDay,
     required this.onLeftArrowTap,
     required this.onRightArrowTap,
     required this.onTodayButtonTap,
     required this.onClearButtonTap,
     required this.clearButtonVisible,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -281,27 +281,27 @@ class _CalendarHeader extends StatelessWidget {
             width: 120.0,
             child: Text(
               headerText,
-              style: TextStyle(fontSize: 26.0),
+              style: const TextStyle(fontSize: 26.0),
             ),
           ),
           IconButton(
-            icon: Icon(Icons.calendar_today, size: 20.0),
+            icon: const Icon(Icons.calendar_today, size: 20.0),
             visualDensity: VisualDensity.compact,
             onPressed: onTodayButtonTap,
           ),
           if (clearButtonVisible)
             IconButton(
-              icon: Icon(Icons.clear, size: 20.0),
+              icon: const Icon(Icons.clear, size: 20.0),
               visualDensity: VisualDensity.compact,
               onPressed: onClearButtonTap,
             ),
           const Spacer(),
           IconButton(
-            icon: Icon(Icons.chevron_left),
+            icon: const Icon(Icons.chevron_left),
             onPressed: onLeftArrowTap,
           ),
           IconButton(
-            icon: Icon(Icons.chevron_right),
+            icon: const Icon(Icons.chevron_right),
             onPressed: onRightArrowTap,
           ),
         ],

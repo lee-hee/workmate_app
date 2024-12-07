@@ -62,7 +62,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
 
       void sendserviceNameItems(String make, String model, String serviceName,
           String servicePrice, String serviceDurationMinutes) async {
-        final String url = 'http://localhost:8080/config/service-item';
+        const String url = 'http://localhost:8080/config/service-item';
 
         // Prepare the data to send
         final Map<String, dynamic> data = {
@@ -80,8 +80,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
           final response = await http.post(
             Uri.parse(url),
             headers: {
-              'Content-Type':
-                  'application/json', 
+              'Content-Type': 'application/json',
             },
             body: jsonData,
           );
@@ -99,7 +98,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
           print('Error: $e');
         }
       }
-      
+
       // Send data to the API
       sendserviceNameItems(make, model, serviceName, servicePrice.toString(),
           serviceDurationMinutes.toString());

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:workmate_app/model/service_item.dart';
 import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart'
     as picker;
+import 'package:workmate_app/widgets/new_booking/add_service_item.dart';
 
 class NewBooking extends StatefulWidget {
   const NewBooking({super.key});
@@ -28,6 +29,7 @@ class _NewBookingState extends State<NewBooking> {
   final List<ServiceOffer> serviceOffers = [];
   int _currentStep = 0;
   var selectedServiceItemId;
+  List<ServiceOffer> selectedServiceOffers = [];
   bool offersLoaded = false;
 
   DateTime? bookingDateTime;
@@ -107,8 +109,24 @@ class _NewBookingState extends State<NewBooking> {
     return response.statusCode;
   }
 
+  void openServiceSelectionOverlay() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => NewServiceItem(
+          onAddServiceOffer: _addServiceoffer, serviceOffers: serviceOffers),
+    );
+  }
+
+  void _addServiceoffer(ServiceOffer serviceOffer) {
+    setState(() {
+      selectedServiceOffers.add(serviceOffer);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
     return Scaffold(
         appBar: AppBar(
           title: const Text('Add a new booking'),
@@ -295,48 +313,83 @@ class _NewBookingState extends State<NewBooking> {
               ),
               Step(
                 title: const Text('Service'),
-                content: Column(children: [
-                  DropdownButtonFormField(
-                    value: selectedServiceItemId,
-                    items: [
-                      for (final serviceOffer in serviceOffers)
-                        DropdownMenuItem(
-                          value: serviceOffer.id,
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 6),
-                              Text(serviceOffer.name),
-                            ],
-                          ),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedServiceItemId = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                      onPressed: () {
-                        picker.DatePicker.showDateTimePicker(context,
-                            showTitleActions: true,
-                            minTime: DateTime(2024, 5, 5, 20, 50),
-                            maxTime: DateTime(3020, 6, 7, 05, 09),
-                            onConfirm: (date) {
-                          setState(() {
-                            bookingDateTime = date;
-                          });
-                        }, locale: picker.LocaleType.en);
-                      },
-                      child: Text(
-                        bookingDateTime != null
-                            ? DateFormat.yMEd()
-                                .add_jms()
-                                .format(bookingDateTime!)
-                            : 'Select a booking date-time',
-                      )),
-                ]),
+                content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                          onPressed: () {
+                            picker.DatePicker.showDateTimePicker(context,
+                                showTitleActions: true,
+                                minTime: DateTime(2024, 5, 5, 20, 50),
+                                maxTime: DateTime(3020, 6, 7, 05, 09),
+                                onConfirm: (date) {
+                              setState(() {
+                                bookingDateTime = date;
+                              });
+                            }, locale: picker.LocaleType.en);
+                          },
+                          child: Text(
+                            bookingDateTime != null
+                                ? DateFormat.yMEd()
+                                    .add_jms()
+                                    .format(bookingDateTime!)
+                                : 'Select a booking date-time',
+                          )),
+                      OutlinedButton(
+                          onPressed: openServiceSelectionOverlay,
+                          child: const Text(
+                            'Select a service',
+                          )),
+                      ListView.builder(
+                        itemCount: serviceOffers.length,
+                        itemBuilder: (context, index) {
+                          final item = serviceOffers[index];
+                          return Dismissible(
+                            // Each Dismissible must contain a Key. Keys allow Flutter to
+                            // uniquely identify widgets.
+                            key: Key(item.id.toString()),
+                            // Provide a function that tells the app
+                            // what to do after an item has been swiped away.
+                            onDismissed: (direction) {
+                              // Remove the item from the data source.
+                              setState(() {
+                                serviceOffers.removeAt(index);
+                              });
+
+                              // Then show a snackbar.
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('$item dismissed')));
+                            },
+                            // Show a red background as the item is swiped away.
+                            background: Container(color: Colors.blueGrey),
+                            child: ListTile(
+                              title: Text(item.name),
+                            ),
+                          );
+                        },
+                      ),
+                      // DropdownButtonFormField(
+                      //   value: selectedServiceItemId,
+                      //   items: [
+                      //     for (final serviceOffer in serviceOffers)
+                      //       DropdownMenuItem(
+                      //         value: serviceOffer.id,
+                      //         child: Row(
+                      //           children: [
+                      //             const SizedBox(width: 6),
+                      //             Text(serviceOffer.name),
+                      //           ],
+                      //         ),
+                      //       ),
+                      //   ],
+                      //   onChanged: (value) {
+                      //     setState(() {
+                      //       //selectedServiceItemIds.add(value!.toString());
+                      //     });
+                      //   },
+                      // ),
+                    ]),
                 isActive: _currentStep >= 2,
               ),
             ],

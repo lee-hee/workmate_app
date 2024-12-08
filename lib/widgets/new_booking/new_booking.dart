@@ -341,34 +341,69 @@ class _NewBookingState extends State<NewBooking> {
                           child: const Text(
                             'Select a service',
                           )),
-                      ListView.builder(
-                        itemCount: serviceOffers.length,
-                        itemBuilder: (context, index) {
-                          final item = serviceOffers[index];
-                          return Dismissible(
-                            // Each Dismissible must contain a Key. Keys allow Flutter to
-                            // uniquely identify widgets.
-                            key: Key(item.id.toString()),
-                            // Provide a function that tells the app
-                            // what to do after an item has been swiped away.
-                            onDismissed: (direction) {
-                              // Remove the item from the data source.
-                              setState(() {
-                                serviceOffers.removeAt(index);
-                              });
+                      const SizedBox(height: 10.0),
+                      const Text('Currently selected services:'),
+                      SizedBox(
+                        height: 200.0,
+                        child: selectedServiceOffers.isEmpty
+                            ? const Text(
+                                'No services selected for the booking',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w100,
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: selectedServiceOffers.length,
+                                itemBuilder: (context, index) {
+                                  final item = selectedServiceOffers[index];
+                                  return Dismissible(
+                                    // Each Dismissible must contain a Key. Keys allow Flutter to
+                                    // uniquely identify widgets.
+                                    key: Key(item.id.toString()),
+                                    // Provide a function that tells the app
+                                    // what to do after an item has been swiped away.
+                                    onDismissed: (direction) {
+                                      // Remove the item from the data source.
+                                      setState(() {
+                                        selectedServiceOffers.removeAt(index);
+                                      });
 
-                              // Then show a snackbar.
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('$item dismissed')));
-                            },
-                            // Show a red background as the item is swiped away.
-                            background: Container(color: Colors.blueGrey),
-                            child: ListTile(
-                              title: Text(item.name),
-                            ),
-                          );
-                        },
+                                      // Then show a snackbar.
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                              content: Text(
+                                                  '${item.name} removed from the sheduled services')));
+                                    },
+                                    // Show a red background as the item is swiped away.
+                                    background:
+                                        Container(color: Colors.blueGrey),
+                                    child: Card(
+                                      child: ListTile(
+                                        tileColor: const Color.fromARGB(
+                                            255, 179, 208, 223),
+                                        visualDensity: const VisualDensity(
+                                            horizontal: 0, vertical: -4),
+                                        contentPadding: const EdgeInsets.all(5),
+                                        shape: RoundedRectangleBorder(
+                                          side: const BorderSide(
+                                              color: Color.fromARGB(
+                                                  255, 88, 97, 69),
+                                              width: 1),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                        title: Text(item.name),
+                                        trailing: const Icon(
+                                            Icons.arrow_circle_left,
+                                            color: Color.fromARGB(
+                                                255, 232, 130, 90)),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                       ),
+
                       // DropdownButtonFormField(
                       //   value: selectedServiceItemId,
                       //   items: [

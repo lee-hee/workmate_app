@@ -91,6 +91,8 @@ class _NewBookingState extends State<NewBooking> {
   }
 
   Future<int> _createBooking() async {
+    List<String> selectedOfferIds =
+        selectedServiceOffers.map((offer) => offer.id.toString()).toList();
     final url = Uri.http('localhost:8080', '/v1/booking');
     final String formattedBookingDateTime =
         serverDateFormater.format(bookingDateTime!);
@@ -103,6 +105,7 @@ class _NewBookingState extends State<NewBooking> {
             'customerPhone': _enteredPhoneNumber,
             'rego': _enteredRego,
             'serviceItemId': selectedServiceItemId,
+            'serviceItemIds': selectedOfferIds,
             'bookingDateTime': formattedBookingDateTime
           },
         ));
@@ -403,27 +406,6 @@ class _NewBookingState extends State<NewBooking> {
                                 },
                               ),
                       ),
-
-                      // DropdownButtonFormField(
-                      //   value: selectedServiceItemId,
-                      //   items: [
-                      //     for (final serviceOffer in serviceOffers)
-                      //       DropdownMenuItem(
-                      //         value: serviceOffer.id,
-                      //         child: Row(
-                      //           children: [
-                      //             const SizedBox(width: 6),
-                      //             Text(serviceOffer.name),
-                      //           ],
-                      //         ),
-                      //       ),
-                      //   ],
-                      //   onChanged: (value) {
-                      //     setState(() {
-                      //       //selectedServiceItemIds.add(value!.toString());
-                      //     });
-                      //   },
-                      // ),
                     ]),
                 isActive: _currentStep >= 2,
               ),

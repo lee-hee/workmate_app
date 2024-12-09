@@ -13,11 +13,11 @@ class Event {
   final String phone;
   final String bookingRef;
   final String bookingTime;
-  final String serviceItemId;
+  final List<String> serviceItemIds;
   final String serviceName;
   final String servicDuration;
 
-  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemId,
+  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemIds,
       this.serviceName, this.servicDuration, this.bookingTime);
 
   @override
@@ -54,7 +54,7 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
         booking['rego'],
         booking['customerPhone'],
         booking['bookingReferenceNumber'],
-        booking['serviceItemId'],
+        booking['serviceItemIds'],
         booking['serviceName'],
         booking['serviceDuration'],
         booking['bookingDateTime'],

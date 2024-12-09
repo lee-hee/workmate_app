@@ -32,52 +32,65 @@ class _NewServiceItemState extends State<NewServiceItem> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
+      padding: const EdgeInsets.fromLTRB(0, 20, 16, 16),
       child: Column(
         children: [
+          const Text(
+            'Select and add a service',
+            style: TextStyle(fontSize: 25.0),
+          ),
           const SizedBox(height: 16),
-          const Text('Select and add a service'),
-          Row(
+          Column(
             children: [
-              DropdownButton(
-                value: widget.serviceOffers[0],
-                items: [
-                  for (final serviceOffer in widget.serviceOffers)
-                    DropdownMenuItem(
-                      value: serviceOffer,
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 6),
-                          Text(serviceOffer.name),
-                        ],
-                      ),
-                    )
-                ],
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() {
-                    _selectedOffer = value;
-                  });
-                },
+              InputDecorator(
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton(
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(2.5),
+                    value: widget.serviceOffers[0],
+                    items: [
+                      for (final serviceOffer in widget.serviceOffers)
+                        DropdownMenuItem(
+                          value: serviceOffer,
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 6),
+                              Text(serviceOffer.name,
+                                  style: const TextStyle(fontSize: 20.0)),
+                            ],
+                          ),
+                        )
+                    ],
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      setState(() {
+                        _selectedOffer = value;
+                      });
+                    },
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: _submitSlectedOffersData,
-                child: const Text('Add service'),
-              ),
-            ],
+          Align(
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: _submitSlectedOffersData,
+                  child: const Text('Add service'),
+                ),
+              ],
+            ),
           )
         ],
       ),

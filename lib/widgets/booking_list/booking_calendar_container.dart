@@ -13,11 +13,11 @@ class Event {
   final String phone;
   final String bookingRef;
   final String bookingTime;
-  final List<String> serviceItemIds;
+  final String serviceItemId;
   final String serviceName;
   final String servicDuration;
 
-  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemIds,
+  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemId,
       this.serviceName, this.servicDuration, this.bookingTime);
 
   @override
@@ -50,17 +50,20 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   bookingsGroupedByDate.forEach((key, value) {
     List<Event> bookingEvents = [];
     for (final booking in value) {
-      var event = Event(
-        booking['rego'],
-        booking['customerPhone'],
-        booking['bookingReferenceNumber'],
-        booking['serviceItemIds'],
-        booking['serviceName'],
-        booking['serviceDuration'],
-        booking['bookingDateTime'],
-      );
-      bookingEvents.add(event);
-      events.add(event);
+      List<dynamic> bookingItems = booking['serviceItemIds'];
+      for (final bookingItemId in bookingItems) {
+        var event = Event(
+          booking['rego'],
+          booking['customerPhone'],
+          booking['bookingReferenceNumber'],
+          bookingItemId,
+          booking['serviceName'],
+          booking['serviceDuration'],
+          booking['bookingDateTime'],
+        );
+        bookingEvents.add(event);
+        events.add(event);
+      }
     }
     DateTime bookingDate = DateTime.parse(key);
     DateTime dateToConsider =

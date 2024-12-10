@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -45,12 +46,15 @@ class _BookingListState extends State<BookingList> {
     final List<dynamic> listData = json.decode(response.body);
     final List<Booking> loadedItems = [];
     for (final item in listData) {
-      loadedItems.add(Booking(
-          customerPhone: item['customerPhone'],
-          bookingReferenceNumber: item['bookingReferenceNumber'],
-          rego: item['rego'],
-          serviceItemId: item['serviceItemId'],
-          bookingTime: item['bookingDateTime']));
+      List<String> bookingItems = item['serviceItemIds'];
+      for (final bookingItemId in bookingItems) {
+        loadedItems.add(Booking(
+            customerPhone: item['customerPhone'],
+            bookingReferenceNumber: item['bookingReferenceNumber'],
+            rego: item['rego'],
+            serviceItemId: int.parse(bookingItemId),
+            bookingTime: item['bookingDateTime']));
+      }
     }
     setState(() {
       _bookings = loadedItems;

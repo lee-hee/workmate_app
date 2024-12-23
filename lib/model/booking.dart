@@ -4,11 +4,11 @@ class Booking {
       required this.bookingReferenceNumber,
       required this.customerPhone,
       required this.rego,
-      required this.serviceItemId});
+      required this.bookedItems});
 
   final String bookingTime;
   final String bookingReferenceNumber;
   final String customerPhone;
   final String rego;
-  final int serviceItemId;
+  final List<String> bookedItems;
 }

@@ -13,15 +13,36 @@ class Event {
   final String phone;
   final String bookingRef;
   final String bookingTime;
-  final String serviceItemId;
+  final List<dynamic> serviceItemIds;
   final String serviceName;
   final String servicDuration;
 
-  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemId,
+  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemIds,
       this.serviceName, this.servicDuration, this.bookingTime);
 
   @override
   String toString() => rego + phone + bookingRef;
+}
+
+class BookingSummary {
+  final String rego;
+  final List<BookingEntry> bookingEntries;
+  const BookingSummary(this.rego, this.bookingEntries);
+
+  @override
+  String toString() => rego + bookingEntries.toString();
+}
+
+class BookingEntry {
+  final String phone;
+  final String bookingRef;
+  final String bookingTime;
+  final List<dynamic> serviceItemIds;
+  final String serviceName;
+  final String servicDuration;
+
+  const BookingEntry(this.phone, this.bookingRef, this.serviceItemIds,
+      this.serviceName, this.servicDuration, this.bookingTime);
 }
 
 final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
@@ -29,8 +50,9 @@ final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
 /// Example events.
 ///
 /// Using a [LinkedHashMap] is highly recommended if you decide to use a map.
-Map<DateTime, List<Event>> kEvents = <DateTime, List<Event>>{};
-List<Event> events = [];
+Map<DateTime, List<BookingSummary>> kEvents =
+    <DateTime, List<BookingSummary>>{};
+List<BookingSummary> events = [];
 
 Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   var rangeStartDay = DateTime(focusedDay.year, focusedDay.month, 1);
@@ -48,22 +70,25 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   }
   final Map bookingsGroupedByDate = json.decode(response.body);
   bookingsGroupedByDate.forEach((key, value) {
-    List<Event> bookingEvents = [];
-    for (final booking in value) {
-      List<dynamic> bookingItems = booking['serviceItemIds'];
-      for (final bookingItemId in bookingItems) {
-        var event = Event(
-          booking['rego'],
-          booking['customerPhone'],
-          booking['bookingReferenceNumber'],
-          bookingItemId,
-          booking['serviceName'],
-          booking['serviceDuration'],
-          booking['bookingDateTime'],
-        );
-        bookingEvents.add(event);
-        events.add(event);
+    List<BookingSummary> bookingEvents = [];
+    for (final bookingSummaryEntry in value) {
+      List<dynamic> bookingsForBookingSummary = bookingSummaryEntry['bookings'];
+      List<BookingEntry> bookingEntryList = [];
+      for (var booking in bookingsForBookingSummary) {
+        var bookingEntry = BookingEntry(
+            booking['customerPhone'],
+            booking['bookingReferenceNumber'],
+            booking['serviceItemIds'],
+            booking['serviceName'],
+            booking['serviceDuration'],
+            booking['bookingDateTime']);
+        bookingEntryList.add(bookingEntry);
       }
+
+      var bookingSummary =
+          BookingSummary(bookingSummaryEntry['rego'], bookingEntryList);
+      bookingEvents.add(bookingSummary);
+      events.add(bookingSummary);
     }
     DateTime bookingDate = DateTime.parse(key);
     DateTime dateToConsider =

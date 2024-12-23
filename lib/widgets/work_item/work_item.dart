@@ -1,22 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:workmate_app/model/service_item.dart';
+import 'package:workmate_app/widgets/booking_list/booking_calendar_container.dart';
 import 'package:workmate_app/widgets/work_item/service_item_list.dart';
 
 class WorkItemPage extends StatefulWidget {
-  const WorkItemPage(
-      {super.key,
-      required this.rego,
-      required this.bookingRef,
-      required this.bookingTime,
-      required this.customerPhone,
-      required this.duration,
-      required this.currentServiceOffers});
-  final List<ServiceOffer> currentServiceOffers;
+  const WorkItemPage({
+    super.key,
+    required this.rego,
+    required this.bookingEntries,
+  });
+  final List<BookingEntry> bookingEntries;
   final String rego;
-  final String bookingRef;
-  final String bookingTime;
-  final String customerPhone;
-  final String duration;
+
   @override
   // ignore: library_private_types_in_public_api
   _WorkItemPageState createState() => _WorkItemPageState();
@@ -32,23 +27,25 @@ class _WorkItemPageState extends State<WorkItemPage> {
             leading:
                 IconButton(onPressed: () => {}, icon: const Icon(Icons.phone)),
             title: const Text('Booking Refenece'),
-            subtitle: Text(widget.bookingRef),
+            subtitle: Text('Booking ref'),
           ),
           ListTile(
             title: const Text('Rego'),
-            subtitle: Text(widget.rego),
+            subtitle: Text('Rego value'),
           ),
           ListTile(
             title: const Text('Booking start'),
-            subtitle: Text(widget.bookingTime),
+            subtitle: Text('Booking start time'),
           ),
           const ListTile(
             title: Text('Pickup Time'),
             subtitle: Text('Future date'),
           ),
-          Expanded(
-              child:
-                  ServiceItemList(serviceOffers: widget.currentServiceOffers))
+          const Expanded(
+              child: ServiceItemList(serviceOffers: [
+            ServiceOffer(id: 1, name: 'offer 1'),
+            ServiceOffer(id: 2, name: 'offer 2'),
+          ])) //widget.currentServiceOffers
         ]));
   }
 }

@@ -21,7 +21,7 @@ class BookingCalender extends StatefulWidget {
 }
 
 class _BookingCalenderState extends State<BookingCalender> {
-  late final ValueNotifier<List<Event>> _selectedEvents;
+  late final ValueNotifier<List<BookingSummary>> _selectedEvents;
   final ValueNotifier<DateTime> _focusedDay = ValueNotifier(DateTime.now());
   final Set<DateTime> _selectedDays = LinkedHashSet<DateTime>(
     equals: isSameDay,
@@ -59,19 +59,19 @@ class _BookingCalenderState extends State<BookingCalender> {
   bool get canClearSelection =>
       _selectedDays.isNotEmpty || _rangeStart != null || _rangeEnd != null;
 
-  List<Event> _getEventsForDay(DateTime day) {
+  List<BookingSummary> _getEventsForDay(DateTime day) {
     DateTime dateToConsider = DateTime(day.year, day.month, day.day);
     var list = kEvents[dateToConsider] ?? [];
     return list;
   }
 
-  List<Event> _getEventsForDays(Iterable<DateTime> days) {
+  List<BookingSummary> _getEventsForDays(Iterable<DateTime> days) {
     return [
       for (final d in days) ..._getEventsForDay(d),
     ];
   }
 
-  List<Event> _getEventsForRange(DateTime start, DateTime end) {
+  List<BookingSummary> _getEventsForRange(DateTime start, DateTime end) {
     final days = daysInRange(start, end);
     return _getEventsForDays(days);
   }
@@ -120,7 +120,6 @@ class _BookingCalenderState extends State<BookingCalender> {
 
   @override
   Widget build(BuildContext context) {
-    print('BuildContext >>>>>> on _BookingCalenderState');
     Widget content = const Center(child: Text('Searching for bookings .... '));
     if (_isLoading) {
       content = const Center(child: CircularProgressIndicator());
@@ -159,7 +158,7 @@ class _BookingCalenderState extends State<BookingCalender> {
               );
             },
           ),
-          TableCalendar<Event>(
+          TableCalendar<BookingSummary>(
               firstDay: kFirstDay,
               lastDay: kLastDay,
               focusedDay: _focusedDay.value,
@@ -204,7 +203,7 @@ class _BookingCalenderState extends State<BookingCalender> {
               )),
           const SizedBox(height: 8.0),
           Expanded(
-            child: ValueListenableBuilder<List<Event>>(
+            child: ValueListenableBuilder<List<BookingSummary>>(
               valueListenable: _selectedEvents,
               builder: (context, value, _) {
                 return ListView.builder(
@@ -220,17 +219,8 @@ class _BookingCalenderState extends State<BookingCalender> {
                         borderRadius: BorderRadius.circular(12.0),
                       ),
                       child: BookingListItem(
-                        thumbnail: const Icon(
-                          Icons.car_repair_outlined,
-                          color: Colors.green,
-                          size: 30.0,
-                        ),
                         rego: value[index].rego,
-                        serviceType: value[index].serviceName,
-                        bookingRef: value[index].bookingRef,
-                        bookingTime: value[index].bookingTime,
-                        customerPhone: value[index].phone,
-                        duration: value[index].servicDuration,
+                        bookingEntries: value[index].bookingEntries,
                       ),
                     );
                   },

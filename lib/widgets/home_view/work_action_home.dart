@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:workmate_app/model/app_action.dart';
+import 'package:workmate_app/widgets/assigned_workitems/assigned_workitem.dart';
 import 'package:workmate_app/widgets/booking_list/booking_calendar.dart';
 import 'package:workmate_app/widgets/home_view/work_action_grid_item.dart';
 import 'package:workmate_app/widgets/new_booking/new_booking.dart';
@@ -14,8 +15,10 @@ class WorkActionHomeScreen extends StatelessWidget {
       navigatingWidget = const NewBooking();
     } else if ('list_booking' == actionKey) {
       navigatingWidget = const BookingCalender();
-    } else {
+    } else if ('add_service_item' == actionKey) {
       navigatingWidget = const ServiceItemScreen();
+    } else {
+      navigatingWidget = const AssignedWorkItemScreen();
     }
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -66,6 +69,15 @@ class WorkActionHomeScreen extends StatelessWidget {
                   color: Color.fromARGB(6, 55, 67, 46)),
               onActionSelected: () {
                 _selectAction(context, 'add_service_item');
+              }),
+          WorkActionGridItem(
+              key: const Key('view_work_items'),
+              action: const AppAction(
+                  id: '4',
+                  title: 'View work items',
+                  color: Color.fromARGB(6, 144, 176, 119)),
+              onActionSelected: () {
+                _selectAction(context, 'view_work_items');
               })
         ],
       ),

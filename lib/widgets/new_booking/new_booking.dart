@@ -139,11 +139,10 @@ class _NewBookingState extends State<NewBooking> {
           child: Stepper(
             currentStep: _currentStep,
             onStepContinue: () {
-              if (_currentStep < 3) {
+                if (_currentStep < 3) {
                 setState(() {
                   _currentStep += 1;
                 });
-              }
               if (_currentStep == 2) {
                 if (!offersLoaded) {
                   _loadServiceItems(
@@ -164,6 +163,9 @@ class _NewBookingState extends State<NewBooking> {
                   });
                   Navigator.of(context).pop();
                 }
+              } else {
+                print('Please fill all the required fiedls');
+              }
               }
             },
             onStepCancel: () {
@@ -183,9 +185,10 @@ class _NewBookingState extends State<NewBooking> {
                       label: Text('First name'),
                     ),
                     validator: (value) {
-                      if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
+                      if (value ==null || value.trim().isEmpty){
+                        return 'First Name is required';
+                      }
+                      if (value.trim().length < 1 ||
                           value.trim().length > 20) {
                         return 'Must be between 1 and 20 characters.';
                       }
@@ -205,8 +208,10 @@ class _NewBookingState extends State<NewBooking> {
                     ),
                     validator: (value) {
                       if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
+                          value.isEmpty) {
+                            return 'Last Name is reuired';
+                          }
+                          if (value.trim().length < 1 ||
                           value.trim().length > 20) {
                         return 'Must be between 1 and 20 characters.';
                       }
@@ -226,8 +231,10 @@ class _NewBookingState extends State<NewBooking> {
                     ),
                     validator: (value) {
                       if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
+                          value.isEmpty){
+                            return 'Phone number is required';
+                          }
+                          if (value.trim().length < 1 ||
                           value.trim().length > 15) {
                         return 'Must be between 1 and 15 characters.';
                       }
@@ -253,8 +260,10 @@ class _NewBookingState extends State<NewBooking> {
                     ),
                     validator: (value) {
                       if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
+                          value.isEmpty){
+                            return 'Rego is required';
+                          }
+                          if (value.trim().length <= 1 ||
                           value.trim().length > 7) {
                         return 'Rego must be 6 charachers';
                       }
@@ -275,8 +284,10 @@ class _NewBookingState extends State<NewBooking> {
                     ),
                     validator: (value) {
                       if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
+                          value.isEmpty) {
+                            return 'Make is required';
+                          }
+                          if (value.trim().length < 1 ||
                           value.trim().length > 15) {
                         return 'Make is not valid';
                       }
@@ -297,8 +308,10 @@ class _NewBookingState extends State<NewBooking> {
                     ),
                     validator: (value) {
                       if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
+                          value.isEmpty) {
+                            return 'Model is required';
+                          }
+                          if (value.trim().length <= 1 ||
                           value.trim().length > 15) {
                         return 'Model is not valid';
                       }

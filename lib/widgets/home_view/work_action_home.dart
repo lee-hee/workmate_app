@@ -4,6 +4,7 @@ import 'package:workmate_app/widgets/assigned_workitems/assigned_workitem.dart';
 import 'package:workmate_app/widgets/booking_list/booking_calendar.dart';
 import 'package:workmate_app/widgets/home_view/work_action_grid_item.dart';
 import 'package:workmate_app/widgets/new_booking/new_booking.dart';
+import 'package:workmate_app/widgets/register_user/register_new_user.dart';
 import 'package:workmate_app/widgets/service_item/service_item_screen.dart';
 
 class WorkActionHomeScreen extends StatelessWidget {
@@ -17,6 +18,8 @@ class WorkActionHomeScreen extends StatelessWidget {
       navigatingWidget = const BookingCalender();
     } else if ('add_service_item' == actionKey) {
       navigatingWidget = const ServiceItemScreen();
+    } else if ('register_user' == actionKey){
+      navigatingWidget = const RegisterUserScreen();
     } else {
       navigatingWidget = const AssignedWorkItemScreen();
     }
@@ -78,7 +81,16 @@ class WorkActionHomeScreen extends StatelessWidget {
                   color: Color.fromARGB(6, 144, 176, 119)),
               onActionSelected: () {
                 _selectAction(context, 'view_work_items');
-              })
+              }),
+          WorkActionGridItem(
+              key: const Key('register_user'),
+              action: const AppAction(
+                  id: '5',
+                  title: 'Register User',
+                  color: Color.fromARGB(6, 172, 200, 100)),
+              onActionSelected: () {
+                _selectAction(context, 'register_user');
+              }),
         ],
       ),
     );

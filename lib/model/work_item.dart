@@ -3,13 +3,21 @@ import 'package:flutter/material.dart';
 class WorkItem {
   const WorkItem(
       {required this.id,
-      required this.assignedUserId,
+      required this.assignedUserName,
+      required this.serviceName,
+      required this.duration,
+      required this.rego,
+      required this.cost,
       required this.workItemStatus,
       required this.startedDateTime});
   final int id;
-  final int assignedUserId;
+  final String assignedUserName;
   final String workItemStatus;
   final String startedDateTime;
+  final String serviceName;
+  final int duration;
+  final String rego;
+  final double cost;
 
   Icon getIconBasedOnStatus() {
     switch (workItemStatus) {
@@ -18,7 +26,7 @@ class WorkItem {
       case 'STARTED':
         return const Icon(Icons.build);
       case 'PAUSED':
-        return const Icon(Icons.pending);
+        return const Icon(Icons.error);
       case 'PARTS_ORDERED':
         return const Icon(Icons.shopping_cart_checkout);
       case 'INTERNAL_CONSULT_NEEDED':
@@ -36,6 +44,31 @@ class WorkItem {
     }
   }
 
+  String getWorkItemStatusString() {
+    switch (workItemStatus) {
+      case 'ASSIGNED':
+        return 'Assigned';
+      case 'STARTED':
+        return 'Working on it';
+      case 'PAUSED':
+        return 'Stoped';
+      case 'PARTS_ORDERED':
+        return 'Waiting for parts';
+      case 'INTERNAL_CONSULT_NEEDED':
+        return 'Help needed';
+      case 'EXTERNAL_CONSULT_NEEDED':
+        return 'Waiting for extrnal tech';
+      case 'COMPLETED':
+        return 'Job complted';
+      case 'INVOICED':
+        return 'Invoiced';
+      case 'PAID':
+        return 'Paid';
+      default:
+        return 'Check with manager';
+    }
+  }
+
   Color getIconColorBasedOnStatus() {
     switch (workItemStatus) {
       case 'ASSIGNED':
@@ -43,7 +76,7 @@ class WorkItem {
       case 'STARTED':
         return const Color.fromARGB(255, 57, 188, 37);
       case 'PAUSED':
-        return const Color.fromARGB(255, 234, 125, 66);
+        return const Color.fromARGB(255, 245, 88, 4);
       case 'PARTS_ORDERED':
         return const Color.fromARGB(255, 66, 234, 231);
       case 'INTERNAL_CONSULT_NEEDED':

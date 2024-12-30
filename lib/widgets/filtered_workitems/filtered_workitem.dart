@@ -27,7 +27,8 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
   }
 
   Future<List<WorkItem>> fetchWorkItemsFilteredToUser(User selectedUser) async {
-    final url = Uri.http('localhost:8080', 'v1/workitems/${selectedUser.id}');
+    final url =
+        Uri.http('localhost:8080', 'v1/workitem-summary/${selectedUser.id}');
     final response = await http.get(url);
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch workitems. Please try again later.');
@@ -37,9 +38,13 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
     for (final entry in workItems) {
       workItemList.add(WorkItem(
           id: entry['id'],
-          assignedUserId: entry['assignedUserId'],
+          assignedUserName: entry['userDto']['name'],
           workItemStatus: entry['workItemStatus'],
-          startedDateTime: entry['startedTime'] ?? 'Not started'));
+          startedDateTime: entry['startedTime'] ?? 'Not started',
+          serviceName: entry['serviceItemDto']['serviceName'],
+          duration: entry['serviceItemDto']['serviceDurationMinutes'],
+          rego: entry['serviceVehicleDto']['rego'],
+          cost: entry['serviceItemDto']['servicePrice']));
     }
     return workItemList;
   }
@@ -68,17 +73,18 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('View tasks for user'),
+        title: const Text('View work items for user'),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             Center(
-                child: OutlinedButton(
-                    onPressed: getWorkItemsByUser,
-                    child: const Text(
-                      'View work items assigned to user',
-                    ))),
+                child: FilledButton.icon(
+              onPressed: getWorkItemsByUser,
+              icon: const Icon(Icons.search_off_outlined),
+              label: const Text('Search for work items'),
+              iconAlignment: IconAlignment.start,
+            )),
             _isLoding
                 ? const CircularProgressIndicator()
                 : workItemsLoaded.isEmpty
@@ -102,43 +108,50 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
   }
 
   Widget workItemListTile(WorkItem workItemByIndex) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Text('Work item assigned at : ${workItemByIndex.startedDateTime}'),
-        Row(
-          children: <Widget>[
-            CircleAvatar(
-              backgroundColor: workItemByIndex.getIconColorBasedOnStatus(),
-              child: workItemByIndex.getIconBasedOnStatus(),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Assigned to : ${workItemByIndex.assignedUserId}'),
-                    const Text('Duration : 1h 30 mins'),
-                  ],
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+              style: const TextStyle(fontWeight: FontWeight.w700),
+              workItemByIndex.serviceName),
+          Row(
+            children: <Widget>[
+              CircleAvatar(
+                backgroundColor: workItemByIndex.getIconColorBasedOnStatus(),
+                child: workItemByIndex.getIconBasedOnStatus(),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('Assigned to : ${workItemByIndex.assignedUserName}'),
+                      Text(
+                          'Duration : ${durationToString(workItemByIndex.duration)}'),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: <Widget>[
-                Text("\$45.00"),
-                //Text("Not Received"),
-              ],
-            ),
-          ],
-        ),
-      ],
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: <Widget>[
+                  Text('Rego : ${workItemByIndex.rego}'),
+                  Text('Cost:\$${workItemByIndex.cost}')
+                ],
+              ),
+            ],
+          ),
+          const Divider(color: Colors.black)
+        ],
+      ),
     );
   }
 
-  Widget buildWorkItemEntries(List<WorkItem> workItems) {
-    return Column(
-        children: [for (var workItem in workItems) Text('workItems')]);
+  String durationToString(int minutes) {
+    var d = Duration(minutes: minutes);
+    List<String> parts = d.toString().split(':');
+    return '${parts[0].padLeft(2, '0')}h:${parts[1].padLeft(2, '0')}m';
   }
 }

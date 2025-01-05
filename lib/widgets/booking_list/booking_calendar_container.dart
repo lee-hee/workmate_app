@@ -39,13 +39,14 @@ class BookingEntry {
   final String bookingTime;
   final List<dynamic> serviceItemIds;
   final String serviceName;
-  final String servicDuration;
+  final int servicDuration; // Changed to int for minutes
 
   const BookingEntry(this.phone, this.bookingRef, this.serviceItemIds,
       this.serviceName, this.servicDuration, this.bookingTime);
 }
 
 final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
+
 
 /// Example events.
 ///
@@ -80,7 +81,7 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
             booking['bookingReferenceNumber'],
             booking['serviceItemIds'],
             booking['serviceName'],
-            booking['serviceDuration'],
+            int.parse(booking['serviceDuration']),
             booking['bookingDateTime']);
         bookingEntryList.add(bookingEntry);
       }

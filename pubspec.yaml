@@ -40,6 +40,7 @@ dependencies:
   flutter_datetime_picker_plus: ^2.2.0
   table_calendar: ^3.1.2
   jiffy: ^6.3.1
+  image_picker: ^1.1.2
   
 dev_dependencies:
   flutter_test:

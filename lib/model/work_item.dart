@@ -47,25 +47,25 @@ class WorkItem {
   String getWorkItemStatusString() {
     switch (workItemStatus) {
       case 'ASSIGNED':
-        return 'Assigned';
+        return 'is assigned to work on';
       case 'STARTED':
-        return 'Working on it';
+        return 'is in progress';
       case 'PAUSED':
-        return 'Stoped';
+        return 'stopped due to an issue';
       case 'PARTS_ORDERED':
-        return 'Waiting for parts';
+        return 'waiting for parts';
       case 'INTERNAL_CONSULT_NEEDED':
-        return 'Help needed';
+        return 'needed help';
       case 'EXTERNAL_CONSULT_NEEDED':
-        return 'Waiting for extrnal tech';
+        return 'waiting for external tech help';
       case 'COMPLETED':
-        return 'Job complted';
+        return 'is complted';
       case 'INVOICED':
-        return 'Invoiced';
+        return 'is invoiced';
       case 'PAID':
-        return 'Paid';
+        return 'is paid';
       default:
-        return 'Check with manager';
+        return 'check with the manager';
     }
   }
 

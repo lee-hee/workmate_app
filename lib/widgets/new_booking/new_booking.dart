@@ -44,7 +44,8 @@ class _NewBookingState extends State<NewBooking> {
     final response = await http.get(url);
 
     if (response.statusCode >= 400) {
-      throw Exception('Failed to fetch grocery items. Please try again later.');
+      throw Exception(
+          'Failed to fetch service offers. Please try again later.');
     }
 
     final List<dynamic> serviceOffersData = json.decode(response.body);

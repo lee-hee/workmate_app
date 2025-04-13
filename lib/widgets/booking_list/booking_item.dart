@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:workmate_app/model/service_item.dart';
 import 'package:workmate_app/widgets/booking_list/booking_calendar_container.dart';
 import 'package:workmate_app/widgets/work_item/work_item.dart';
 
@@ -18,36 +17,12 @@ class BookingDescription extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Expanded(child: Text(rego)),
-        const Text('Items'),
+        Center(
+          child: Text('Vehical Rego: $rego'),
+        ),
+        const Text(' Work Items'),
         for (int i = 0; i < bookingEntries.length; i++)
-          Expanded(child: Text('${i + 1} - ${bookingEntries[i].serviceName}')),
-        // const Padding(padding: EdgeInsets.only(bottom: 2.0)),
-        // Expanded(
-        //   child: Text(
-        //     rego,
-        //     maxLines: 2,
-        //     overflow: TextOverflow.ellipsis,
-        //     style: const TextStyle(
-        //       fontSize: 12.0,
-        //       color: Colors.black54,
-        //     ),
-        //   ),
-        // ),
-        // Text(
-        //   'Booking ref: $bookingRef',
-        //   style: const TextStyle(
-        //     fontSize: 12.0,
-        //     color: Colors.black87,
-        //   ),
-        // ),
-        // Text(
-        //   'Start at : $bookingTime - $duration',
-        //   style: const TextStyle(
-        //     fontSize: 12.0,
-        //     color: Colors.black54,
-        //   ),
-        // ),
+          Expanded(child: Text(' ${i + 1} - ${bookingEntries[i].serviceName}')),
       ],
     );
   }
@@ -71,9 +46,9 @@ class BookingListItem extends StatelessWidget {
         );
       },
       child: SizedBox(
-        height: 170,
+        height: 100,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Column(
               children: <Widget>[

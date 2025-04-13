@@ -29,6 +29,7 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
   Future<List<WorkItem>> fetchWorkItemsFilteredToUser(User selectedUser) async {
     final url =
         Uri.http('localhost:8080', 'v1/workitem-summary/${selectedUser.id}');
+    print('xxxxxxx$url');
     final response = await http.get(url);
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch workitems. Please try again later.');
@@ -114,7 +115,7 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
         children: <Widget>[
           Text(
               style: const TextStyle(fontWeight: FontWeight.w700),
-              workItemByIndex.serviceName),
+              '${workItemByIndex.serviceName} ${workItemByIndex.getWorkItemStatusString()}'),
           Row(
             children: <Widget>[
               CircleAvatar(

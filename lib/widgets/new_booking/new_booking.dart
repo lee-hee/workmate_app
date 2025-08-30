@@ -53,7 +53,8 @@ class _NewBookingState extends State<NewBooking> {
     for (final item in serviceOffersData) {
       setState(() {
         serviceOffers.add(
-          ServiceOffer(id: item['id'], name: item['serviceName']),
+          ServiceOffer(
+              id: item['id'], name: item['serviceName'], bookingRef: ''),
         );
         selectedServiceItemId ??= serviceOffers.first.id;
       });

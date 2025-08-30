@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 class WorkItemJournalRecord {
   const WorkItemJournalRecord(
       {required this.id,
@@ -9,10 +7,10 @@ class WorkItemJournalRecord {
       required this.newCompletionDateTime,
       required this.imageUrl,
       required this.journalType});
-  final Long id;
-  final Long workItemId;
+  final int id;
+  final int workItemId;
   final String note;
-  final Long newCost;
+  final double newCost;
   final DateTime newCompletionDateTime;
   final String imageUrl;
   final String journalType;

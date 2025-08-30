@@ -74,10 +74,17 @@ class _WorkItemPageState extends State<WorkItemPage> {
     }
     final List serviceOffersData = json.decode(response.body);
     List<ServiceOffer> serviceOffers = [];
-    for (final entry in serviceOffersData) {
-      BookingEntry booking = bookingEntries.where((booking) => booking.serviceItemIds.contains(entry['id']));
-      serviceOffers
-          .add(ServiceOffer(id: entry['id'], name: entry['serviceName'],bookingRef: entry[]));
+
+    for (BookingEntry bookingEntry in bookingEntries) {
+      List<dynamic> serviceItemIds = bookingEntry.serviceItemIds;
+      for (final entry in serviceOffersData) {
+        if (serviceItemIds.contains(entry['id'].toString())) {
+          serviceOffers.add(ServiceOffer(
+              id: entry['id'],
+              name: entry['serviceName'],
+              bookingRef: bookingEntry.bookingRef));
+        }
+      }
     }
     return serviceOffers;
   }
@@ -104,8 +111,10 @@ class _WorkItemPageState extends State<WorkItemPage> {
           ),
           Expanded(
               child: ServiceItemList(
-                  serviceOffers: serviceOffers,
-                  slectableUsers: users)) //widget.currentServiceOffers
+            serviceOffers: serviceOffers,
+            slectableUsers: users,
+            workItemId: -1,
+          )) //widget.currentServiceOffers
         ]));
   }
 

@@ -1,23 +1,19 @@
-import 'dart:collection';
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
+import 'package:workmate_app/model/assignable_service_item.dart';
 import 'package:workmate_app/model/service_item.dart';
 import 'package:workmate_app/model/user.dart';
-import 'package:workmate_app/model/work_item_user_booking_ref.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ServiceItemList extends StatefulWidget {
-const ServiceItemList({
-    super.key,
-    required this.serviceOffers,
-    required this.slectableUsers,
-    required this.workItemId,
-    required this.bookingRef,
-  });
+  const ServiceItemList(
+      {super.key,
+      required this.serviceOffers,
+      required this.slectableUsers,
+      required this.workItemId});
   final List<ServiceOffer> serviceOffers;
   final List<User> slectableUsers;
-  final Long workItemId;
-  final String bookingRef;
+  final int workItemId;
   @override
   // ignore: library_private_types_in_public_api
   _ServiceItemListState createState() => _ServiceItemListState();
@@ -34,28 +30,11 @@ class _ServiceItemListState extends State<ServiceItemList> {
       child: ListView.builder(
           itemCount: widget.serviceOffers.length,
           itemBuilder: (ctx, index) => ListTile(
-                title: Text(
-                    '${widget.serviceOffers[index].name} ${widget.serviceOffers[index].id}'),
-                trailing: getUsers(),
+                title: Text(widget.serviceOffers[index].name),
+                trailing: getAssignableServiceItems(
+                    widget.serviceOffers[index], widget.workItemId),
               )),
     );
-  }
-
-  DropdownMenu getUsers() {
-    return DropdownMenu(
-        initialSelection: null,
-        onSelected: (value) => {
-              //we have workitemid<-->user
-              print('link work item to user in the server'+value)
-            },
-        dropdownMenuEntries: [
-          for (final user in widget.slectableUsers)
-            DropdownMenuEntry<WorkItemToUserBookingRef>(
-                label: user.name,
-                value: WorkItemToUserBookingRef(
-                  userId: user.id, workItemId: widget.workItemId, bookingRef: widget.bookingRef)
-                )) //Create a wrapped entity workitemid<-->user
-        ]);
   }
 
   void setSlectedUser(String? value) {
@@ -63,5 +42,36 @@ class _ServiceItemListState extends State<ServiceItemList> {
     setState(() {
       //dropdownValue = value!;
     });
+  }
+
+  DropdownMenu getAssignableServiceItems(
+      ServiceOffer serviceOffer, int workItemId) {
+    return DropdownMenu(
+        initialSelection: null,
+        onSelected: (assignableServiceItem) =>
+            {createWorkItem(assignableServiceItem)},
+        dropdownMenuEntries: [
+          for (final user in widget.slectableUsers)
+            DropdownMenuEntry<AssignableServiceItem>(
+                label: user.name,
+                value: AssignableServiceItem(
+                    bookingRef: serviceOffer.bookingRef,
+                    serviceItemId: serviceOffer.id,
+                    userId: user.id,
+                    workItemId:
+                        workItemId)) //Create a wrapped entity workitemid<-->user
+        ]);
+  }
+
+  createWorkItem(AssignableServiceItem assignableServiceItem) async {
+    final url = Uri.http('localhost:8080',
+        'v1/workitem/${assignableServiceItem.bookingRef}/${assignableServiceItem.userId}');
+    final response = await http.post(url, headers: {
+      'Content-Type': 'application/json',
+    });
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to fetch servcie offers. Please try again later.');
+    }
   }
 }

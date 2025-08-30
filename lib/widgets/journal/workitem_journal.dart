@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 class WorkItemJournalScreen extends StatefulWidget {
   const WorkItemJournalScreen({super.key, required this.selectedWorkItem});
 
-  final void Function(WorkItem selectedWorkItem) selectedWorkItem;
+  final WorkItem selectedWorkItem;
 
   @override
   State<WorkItemJournalScreen> createState() {
@@ -25,10 +25,15 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
   @override
   void initState() {
     super.initState();
+    fetchJournalRecordsForWorkItem(widget.selectedWorkItem.id).then((onValue) {
+      setState(() {
+        loadedJournalRecords = onValue;
+      });
+    });
   }
 
   Future<List<WorkItemJournalRecord>> fetchJournalRecordsForWorkItem(
-      Long workItemId) async {
+      int workItemId) async {
     final url = Uri.http('localhost:8080', 'v1/workitem/journal/$workItemId');
     final response = await http.get(url);
     if (response.statusCode != 200) {
@@ -53,7 +58,7 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('View work items for user'),
+        title: const Text('Work item journal records'),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -61,7 +66,7 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
             _isLoding
                 ? const CircularProgressIndicator()
                 : loadedJournalRecords.isEmpty
-                    ? const Text('No data found for the filter criteria')
+                    ? const Text('No journal records found')
                     : ListView.builder(
                         shrinkWrap: true,
                         itemCount: loadedJournalRecords.length,

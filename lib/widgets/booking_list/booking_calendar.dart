@@ -1,16 +1,22 @@
 // Copyright 2019 Aleksander Woźniak
 // SPDX-License-Identifier: Apache-2.0
 
-import 'dart:async';
+// Packages
 import 'dart:collection';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:workmate_app/model/booking.dart';
-import 'package:workmate_app/widgets/booking_list/booking_item.dart';
-import 'package:workmate_app/widgets/booking_list/booking_calendar_container.dart';
-import 'package:workmate_app/widgets/new_booking/new_booking.dart';
+
+// Models
+import '../../model/booking.dart';
+
+// Widgets
+import '../../widgets/booking_list/booking_item.dart';
+import '../../widgets/booking_list/booking_calendar_container.dart';
+import '../../widgets/new_booking/new_booking.dart';
+
+// Utils
+import '../../utils/responsive_utils/booking_list/calender_list_util.dart';
 
 class BookingCalender extends StatefulWidget {
   const BookingCalender({super.key});
@@ -124,112 +130,259 @@ class _BookingCalenderState extends State<BookingCalender> {
     if (_isLoading) {
       content = const Center(child: CircularProgressIndicator());
     } else {
-      content = Column(
-        children: [
-          ValueListenableBuilder<DateTime>(
-            valueListenable: _focusedDay,
-            builder: (context, value, _) {
-              return _CalendarHeader(
-                focusedDay: value,
-                clearButtonVisible: canClearSelection,
-                onTodayButtonTap: () {
-                  setState(() => _focusedDay.value = DateTime.now());
-                },
-                onClearButtonTap: () {
-                  setState(() {
-                    _rangeStart = null;
-                    _rangeEnd = null;
-                    _selectedDays.clear();
-                    _selectedEvents.value = [];
-                  });
-                },
-                onLeftArrowTap: () {
-                  _pageController.previousPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                  );
-                },
-                onRightArrowTap: () {
-                  _pageController.nextPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                  );
-                },
-              );
-            },
-          ),
-          TableCalendar<BookingSummary>(
-              firstDay: kFirstDay,
-              lastDay: kLastDay,
-              focusedDay: _focusedDay.value,
-              headerVisible: true,
-              selectedDayPredicate: (day) => _selectedDays.contains(day),
-              rangeStartDay: _rangeStart,
-              rangeEndDay: _rangeEnd,
-              calendarFormat: _calendarFormat,
-              rangeSelectionMode: _rangeSelectionMode,
-              eventLoader: _getEventsForDay,
-              // holidayPredicate: (day) {
-              //   // Every 20th day of the month will be treated as a holiday
-              //   return day.day == 20;
-              // },
-              onDaySelected: _onDaySelected,
-              onRangeSelected: _onRangeSelected,
-              onCalendarCreated: (controller) => _pageController = controller,
-              onPageChanged: (focusedDay) => _onPageChanged(focusedDay),
-              onFormatChanged: (format) {
-                if (_calendarFormat != format) {
-                  setState(() => _calendarFormat = format);
-                }
-              },
-              calendarStyle: const CalendarStyle(
-                markersAlignment: Alignment.bottomRight,
-              ),
-              calendarBuilders: CalendarBuilders(
-                markerBuilder: (context, day, events) => events.isNotEmpty
-                    ? Container(
-                        width: 24,
-                        height: 24,
-                        alignment: Alignment.center,
-                        decoration: const BoxDecoration(
-                          color: Colors.lightBlue,
-                        ),
-                        child: Text(
-                          '${events.length}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      )
-                    : null,
-              )),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: ValueListenableBuilder<List<BookingSummary>>(
-              valueListenable: _selectedEvents,
-              builder: (context, value, _) {
-                return ListView.builder(
-                  itemCount: value.length,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 12.0,
-                        vertical: 4.0,
+      content = ResponsiveBookingListUtils.isWideScreen(context)
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Calendar Section (60% width)
+                SizedBox(
+                  width: MediaQuery.of(context).size.width *
+                      ResponsiveBookingListUtils.getCalendarWidthRatio(context),
+                  child: Padding(
+                    padding:
+                        ResponsiveBookingListUtils.getSectionPadding(context),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          ValueListenableBuilder<DateTime>(
+                            valueListenable: _focusedDay,
+                            builder: (context, value, _) {
+                              return _CalendarHeader(
+                                focusedDay: value,
+                                clearButtonVisible: canClearSelection,
+                                onTodayButtonTap: () {
+                                  setState(
+                                      () => _focusedDay.value = DateTime.now());
+                                },
+                                onClearButtonTap: () {
+                                  setState(() {
+                                    _rangeStart = null;
+                                    _rangeEnd = null;
+                                    _selectedDays.clear();
+                                    _selectedEvents.value = [];
+                                  });
+                                },
+                                onLeftArrowTap: () {
+                                  _pageController.previousPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  );
+                                },
+                                onRightArrowTap: () {
+                                  _pageController.nextPage(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                          TableCalendar<BookingSummary>(
+                              firstDay: kFirstDay,
+                              lastDay: kLastDay,
+                              focusedDay: _focusedDay.value,
+                              headerVisible: true,
+                              selectedDayPredicate: (day) =>
+                                  _selectedDays.contains(day),
+                              rangeStartDay: _rangeStart,
+                              rangeEndDay: _rangeEnd,
+                              calendarFormat: _calendarFormat,
+                              rangeSelectionMode: _rangeSelectionMode,
+                              eventLoader: _getEventsForDay,
+                              // holidayPredicate: (day) {
+                              //   // Every 20th day of the month will be treated as a holiday
+                              //   return day.day == 20;
+                              // },
+                              onDaySelected: _onDaySelected,
+                              onRangeSelected: _onRangeSelected,
+                              onCalendarCreated: (controller) =>
+                                  _pageController = controller,
+                              onPageChanged: (focusedDay) =>
+                                  _onPageChanged(focusedDay),
+                              onFormatChanged: (format) {
+                                if (_calendarFormat != format) {
+                                  setState(() => _calendarFormat = format);
+                                }
+                              },
+                              calendarStyle: const CalendarStyle(
+                                markersAlignment: Alignment.bottomRight,
+                              ),
+                              calendarBuilders: CalendarBuilders(
+                                markerBuilder: (context, day, events) =>
+                                    events.isNotEmpty
+                                        ? Container(
+                                            width: 24,
+                                            height: 24,
+                                            alignment: Alignment.center,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.lightBlue,
+                                            ),
+                                            child: Text(
+                                              '${events.length}',
+                                              style: const TextStyle(
+                                                  color: Colors.white),
+                                            ),
+                                          )
+                                        : null,
+                              )),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        border: Border.all(),
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      child: BookingListItem(
-                        rego: value[index].rego,
-                        bookingEntries: value[index].bookingEntries,
-                      ),
+                    ),
+                  ),
+                ),
+                // Task List Section (40% width)
+                Expanded(
+                  child: Padding(
+                    padding:
+                        ResponsiveBookingListUtils.getSectionPadding(context),
+                    child: ValueListenableBuilder<List<BookingSummary>>(
+                      valueListenable: _selectedEvents,
+                      builder: (context, value, _) {
+                        if (value.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No bookings available',
+                              style: TextStyle(fontSize: 16.0),
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          itemCount: value.length,
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 12.0,
+                                vertical: 4.0,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(),
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              child: BookingListItem(
+                                rego: value[index].rego,
+                                bookingEntries: value[index].bookingEntries,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                ValueListenableBuilder<DateTime>(
+                  valueListenable: _focusedDay,
+                  builder: (context, value, _) {
+                    return _CalendarHeader(
+                      focusedDay: value,
+                      clearButtonVisible: canClearSelection,
+                      onTodayButtonTap: () {
+                        setState(() => _focusedDay.value = DateTime.now());
+                      },
+                      onClearButtonTap: () {
+                        setState(() {
+                          _rangeStart = null;
+                          _rangeEnd = null;
+                          _selectedDays.clear();
+                          _selectedEvents.value = [];
+                        });
+                      },
+                      onLeftArrowTap: () {
+                        _pageController.previousPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      onRightArrowTap: () {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
-          ),
-        ],
-      );
+                ),
+                TableCalendar<BookingSummary>(
+                  firstDay: kFirstDay,
+                  lastDay: kLastDay,
+                  focusedDay: _focusedDay.value,
+                  headerVisible: true,
+                  selectedDayPredicate: (day) => _selectedDays.contains(day),
+                  rangeStartDay: _rangeStart,
+                  rangeEndDay: _rangeEnd,
+                  calendarFormat: _calendarFormat,
+                  rangeSelectionMode: _rangeSelectionMode,
+                  eventLoader: _getEventsForDay,
+                  onDaySelected: _onDaySelected,
+                  onRangeSelected: _onRangeSelected,
+                  onCalendarCreated: (controller) =>
+                      _pageController = controller,
+                  onPageChanged: (focusedDay) => _onPageChanged(focusedDay),
+                  onFormatChanged: (format) {
+                    if (_calendarFormat != format) {
+                      setState(() => _calendarFormat = format);
+                    }
+                  },
+                  calendarStyle: const CalendarStyle(
+                    markersAlignment: Alignment.bottomRight,
+                  ),
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (context, day, events) => events.isNotEmpty
+                        ? Container(
+                            width: 24,
+                            height: 24,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: Colors.lightBlue,
+                            ),
+                            child: Text(
+                              '${events.length}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 8.0),
+                Expanded(
+                  child: ValueListenableBuilder<List<BookingSummary>>(
+                    valueListenable: _selectedEvents,
+                    builder: (context, value, _) {
+                      if (value.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'No bookings available',
+                            style: TextStyle(fontSize: 16.0),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        itemCount: value.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 12.0,
+                              vertical: 4.0,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(),
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            child: BookingListItem(
+                              rego: value[index].rego,
+                              bookingEntries: value[index].bookingEntries,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Bookings calender'), actions: [
@@ -262,7 +415,7 @@ class _CalendarHeader extends StatelessWidget {
     final headerText = DateFormat.yMMM().format(focusedDay);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: ResponsiveBookingListUtils.getHeaderPadding(context),
       child: Row(
         children: [
           const SizedBox(width: 16.0),

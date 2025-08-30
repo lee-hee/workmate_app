@@ -1,9 +1,17 @@
+// Packages
 import 'package:flutter/material.dart';
-import 'package:workmate_app/model/assignable_service_item.dart';
-import 'package:workmate_app/model/service_item.dart';
-import 'package:workmate_app/model/user.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+// Models
+import '../../model/assignable_service_item.dart';
+import '../../model/service_item.dart';
+import '../../model/user.dart';
+
+// Config
+import '../../config/backend_config.dart';
+
+// Utils
+import '../../utils/responsive_utils/work_item/work_item_util.dart';
 
 class ServiceItemList extends StatefulWidget {
   const ServiceItemList(
@@ -21,19 +29,23 @@ class ServiceItemList extends StatefulWidget {
 
 class _ServiceItemListState extends State<ServiceItemList> {
   @override
-  Widget build(Object context) {
-    return Container(
-      margin: const EdgeInsets.all(15.0),
-      padding: const EdgeInsets.all(3.0),
-      decoration: BoxDecoration(
-          border: Border.all(color: const Color.fromARGB(255, 48, 144, 97))),
-      child: ListView.builder(
-          itemCount: widget.serviceOffers.length,
-          itemBuilder: (ctx, index) => ListTile(
-                title: Text(widget.serviceOffers[index].name),
-                trailing: getAssignableServiceItems(
-                    widget.serviceOffers[index], widget.workItemId),
-              )),
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: ResponsiveWorkItemUtils.getServiceItemListWidth(context),
+      height: ResponsiveWorkItemUtils.getServiceItemListHeight(context),
+      child: Container(
+        margin: ResponsiveWorkItemUtils.getServiceItemListMargin(context),
+        padding: ResponsiveWorkItemUtils.getServiceItemListPadding(context),
+        decoration: BoxDecoration(
+            border: Border.all(color: const Color.fromARGB(255, 48, 144, 97))),
+        child: ListView.builder(
+            itemCount: widget.serviceOffers.length,
+            itemBuilder: (ctx, index) => ListTile(
+                  title: Text(widget.serviceOffers[index].name),
+                  trailing: getAssignableServiceItems(
+                      widget.serviceOffers[index], widget.workItemId),
+                )),
+      ),
     );
   }
 
@@ -44,27 +56,30 @@ class _ServiceItemListState extends State<ServiceItemList> {
     });
   }
 
-  DropdownMenu getAssignableServiceItems(
-      ServiceOffer serviceOffer, int workItemId) {
-    return DropdownMenu(
-        initialSelection: null,
-        onSelected: (assignableServiceItem) =>
-            {createWorkItem(assignableServiceItem)},
-        dropdownMenuEntries: [
-          for (final user in widget.slectableUsers)
-            DropdownMenuEntry<AssignableServiceItem>(
-                label: user.name,
-                value: AssignableServiceItem(
-                    bookingRef: serviceOffer.bookingRef,
-                    serviceItemId: serviceOffer.id,
-                    userId: user.id,
-                    workItemId:
-                        workItemId)) //Create a wrapped entity workitemid<-->user
-        ]);
+  Widget getAssignableServiceItems(ServiceOffer serviceOffer, int workItemId) {
+    return Padding(
+      padding: ResponsiveWorkItemUtils.getDropdownPadding(
+          context), // Responsive padding
+      child: DropdownMenu(
+          initialSelection: null,
+          onSelected: (assignableServiceItem) =>
+              {createWorkItem(assignableServiceItem!)},
+          dropdownMenuEntries: [
+            for (final user in widget.slectableUsers)
+              DropdownMenuEntry<AssignableServiceItem>(
+                  label: user.name,
+                  value: AssignableServiceItem(
+                      bookingRef: serviceOffer.bookingRef,
+                      serviceItemId: serviceOffer.id,
+                      userId: user.id,
+                      workItemId:
+                          workItemId)) //Create a wrapped entity workitemid<-->user
+          ]),
+    );
   }
 
   createWorkItem(AssignableServiceItem assignableServiceItem) async {
-    final url = Uri.http('localhost:8080',
+    final url = BackendConfig.getUri(
         'v1/workitem/${assignableServiceItem.bookingRef}/${assignableServiceItem.userId}');
     final response = await http.post(url, headers: {
       'Content-Type': 'application/json',

@@ -7,6 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+//Config
+import '../../config/backend_config.dart';
+
 /// Example event class.
 class Event {
   final String rego;
@@ -59,7 +62,7 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   var rangeEndDay = DateTime(focusedDay.year, focusedDay.month + 1, 0);
   final String formattedStartDay = serverFormater.format(rangeStartDay);
   final String formattedEndtDay = serverFormater.format(rangeEndDay);
-  final url = Uri.http('localhost:8080',
+  final url = BackendConfig.getUri(
       'v1/bookings-within/$formattedStartDay/$formattedEndtDay');
   kEvents.clear();
   events.clear();

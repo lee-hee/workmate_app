@@ -7,7 +7,9 @@ import 'dart:convert';
 import 'package:workmate_app/model/work_item.dart';
 import 'package:workmate_app/widgets/filtered_workitems/filtered_workitem_tile.dart';
 import 'package:workmate_app/widgets/filtered_workitems/workitem_filter.dart';
-import 'package:workmate_app/widgets/journal/workitem_journal.dart';
+
+// Config
+import '../../config/backend_config.dart';
 
 class FilteredWorkItemScreen extends StatefulWidget {
   const FilteredWorkItemScreen({super.key});
@@ -29,8 +31,7 @@ class _FilteredWorkItemScreen extends State<FilteredWorkItemScreen> {
   }
 
   Future<List<WorkItem>> fetchWorkItemsFilteredToUser(User selectedUser) async {
-    final url =
-        Uri.http('localhost:8080', 'v1/workitem-summary/${selectedUser.id}');
+    final url = BackendConfig.getUri('v1/workitem-summary/${selectedUser.id}');
     print('xxxxxxx$url');
     final response = await http.get(url);
     if (response.statusCode != 200) {

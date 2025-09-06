@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:workmate_app/model/service_item.dart';
+
+// Models
+import '../../model/service_item.dart';
 
 class NewServiceItem extends StatefulWidget {
   const NewServiceItem(

@@ -6,6 +6,9 @@ import 'dart:convert';
 
 import 'package:workmate_app/model/work_item.dart';
 
+// Config
+import '../../config/backend_config.dart';
+
 class AddJournalRecord extends StatefulWidget {
   const AddJournalRecord({super.key, required this.workItem});
 
@@ -31,7 +34,7 @@ class _AddJournalRecordScreen extends State<AddJournalRecord> {
   }
 
   Future<List<JournalType>> getJournalTypes() async {
-    final url = Uri.http('localhost:8080', '/config/journalTypes');
+    final url = BackendConfig.getUri('config/journalTypes');
     final response = await http.get(url, headers: {
       'Content-Type': 'application/json',
     });

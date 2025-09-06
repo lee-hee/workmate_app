@@ -3,6 +3,9 @@ import 'package:workmate_app/model/user.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+// Config
+import '../../config/backend_config.dart';
+
 class WorkItemFilterScreen extends StatefulWidget {
   const WorkItemFilterScreen({super.key, required this.searchForWorkItems});
 
@@ -25,7 +28,7 @@ class _WorkItemFilterScreen extends State<WorkItemFilterScreen> {
   }
 
   Future<List<User>> loadUserData() async {
-    final url = Uri.http('localhost:8080', 'config/users');
+    final url = BackendConfig.getUri('config/users');
     final response = await http.get(url);
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch users. Please try again later.');

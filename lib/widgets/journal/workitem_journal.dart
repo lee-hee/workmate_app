@@ -5,6 +5,9 @@ import 'package:workmate_app/model/work_item.dart';
 import 'package:workmate_app/model/work_item_journal_record.dart';
 import 'package:http/http.dart' as http;
 
+// Config
+import '../../config/backend_config.dart';
+
 class WorkItemJournalScreen extends StatefulWidget {
   const WorkItemJournalScreen({super.key, required this.selectedWorkItem});
 
@@ -33,7 +36,7 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
 
   Future<List<WorkItemJournalRecord>> fetchJournalRecordsForWorkItem(
       int workItemId) async {
-    final url = Uri.http('localhost:8080', 'v1/workitem/journal/$workItemId');
+    final url = BackendConfig.getUri('v1/workitem/journal/$workItemId');
     final response = await http.get(url);
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch workitems. Please try again later.');

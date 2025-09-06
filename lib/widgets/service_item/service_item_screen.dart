@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert'; // For encoding/decoding JSON
+import 'dart:convert';
+
+// Config
+import '../../config/backend_config.dart';
+
+// Utils
+import '../../utils/responsive_utils/service_item/service_item_util.dart';
 
 class ServiceItemScreen extends StatefulWidget {
   const ServiceItemScreen({super.key});
@@ -62,7 +68,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
 
       void sendserviceNameItems(String make, String model, String serviceName,
           String servicePrice, String serviceDurationMinutes) async {
-        const String url = 'http://localhost:8080/config/service-item';
+        final url = BackendConfig.getUri('config/service-item');
 
         // Prepare the data to send
         final Map<String, dynamic> data = {
@@ -78,7 +84,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
         // Send a POST request to the API
         try {
           final response = await http.post(
-            Uri.parse(url),
+            url,
             headers: {
               'Content-Type': 'application/json',
             },
@@ -149,126 +155,135 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
       appBar: AppBar(
         title: const Text('Add a Service Item'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    maxLength: 15,
-                    controller: _makeController,
-                    decoration: const InputDecoration(labelText: 'Make'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a valid make';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    maxLength: 15,
-                    controller: _modelController,
-                    decoration: const InputDecoration(labelText: 'Model'),
-                    validator: (value) {
-                      if (value == null ||
-                          value.isEmpty ||
-                          value.trim().length <= 1 ||
-                          value.trim().length > 15) {
-                        return 'Please enter a valid model';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    controller: _serviceNameController,
-                    decoration: const InputDecoration(labelText: 'Service'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a valid Service';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: TextFormField(
-                    controller: _servicePriceController,
-                    decoration: const InputDecoration(labelText: 'Price (\$)'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null ||
-                          value.isEmpty ||
-                          double.tryParse(value) == null) {
-                        return 'Please enter a valid Price';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: GestureDetector(
-                    onTap: _pickDuration,
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Duration (Hh:Mm)',
-                        border: const OutlineInputBorder(),
-                        errorText: _isDurationValid
-                            ? null
-                            : 'Duration cannot be empty',
+      body: Align(
+        alignment: ResponsiveServiceItemScreenUtils.getAlignment(
+            context), // Center on web
+        child: SizedBox(
+          width: ResponsiveServiceItemScreenUtils.getMaxWidth(context),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TextFormField(
+                        maxLength: 15,
+                        controller: _makeController,
+                        decoration: const InputDecoration(labelText: 'Make'),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a valid make';
+                          }
+                          return null;
+                        },
                       ),
-                      child: Text(
-                        '${_selectedDuration.hour.toString().padLeft(2, '0')}h:${_selectedDuration.minute.toString().padLeft(2, '0')}m',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).textTheme.bodyMedium!.color,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TextFormField(
+                        maxLength: 15,
+                        controller: _modelController,
+                        decoration: const InputDecoration(labelText: 'Model'),
+                        validator: (value) {
+                          if (value == null ||
+                              value.isEmpty ||
+                              value.trim().length <= 1 ||
+                              value.trim().length > 15) {
+                            return 'Please enter a valid model';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TextFormField(
+                        controller: _serviceNameController,
+                        decoration: const InputDecoration(labelText: 'Service'),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a valid Service';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TextFormField(
+                        controller: _servicePriceController,
+                        decoration:
+                            const InputDecoration(labelText: 'Price (\$)'),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null ||
+                              value.isEmpty ||
+                              double.tryParse(value) == null) {
+                            return 'Please enter a valid Price';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: GestureDetector(
+                        onTap: _pickDuration,
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Duration (Hh:Mm)',
+                            border: const OutlineInputBorder(),
+                            errorText: _isDurationValid
+                                ? null
+                                : 'Duration cannot be empty',
+                          ),
+                          child: Text(
+                            '${_selectedDuration.hour.toString().padLeft(2, '0')}h:${_selectedDuration.minute.toString().padLeft(2, '0')}m',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color:
+                                  Theme.of(context).textTheme.bodyMedium!.color,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _saveserviceItem,
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: const Color.fromARGB(
-                            255, 18, 107, 125), // Text color
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4)),
-                      ),
-                      child: const Text('Save'),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: _cancelForm,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(4)), // Button shape
-                      ),
-                      child: const Text('Cancel'),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _saveserviceItem,
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: const Color.fromARGB(
+                                255, 18, 107, 125), // Text color
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4)),
+                          ),
+                          child: const Text('Save'),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: _cancelForm,
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.grey,
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(4)), // Button shape
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

@@ -12,7 +12,7 @@ import '../../widgets/service_item/service_item_screen.dart';
 import '../../utils/responsive_utils/home_view/home_util.dart';
 
 // Testing purpose - journal entry page
-import '../filtered_workitems/workitem_journal_entry.dart';
+// import '../filtered_workitems/workitem_journal_entry.dart';
 
 class WorkActionHomeScreen extends StatelessWidget {
   const WorkActionHomeScreen({super.key});
@@ -36,13 +36,13 @@ class WorkActionHomeScreen extends StatelessWidget {
   }
 
   // Testing purpose
-  void _navigateToJournalPage(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => const JournalFormPage(),
-      ),
-    );
-  }
+  // void _navigateToJournalPage(BuildContext context) {
+  //   Navigator.of(context).push(
+  //     MaterialPageRoute(
+  //       builder: (ctx) => const JournalFormPage(),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -107,17 +107,17 @@ class WorkActionHomeScreen extends StatelessWidget {
             ),
           ),
           // Testing button
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.note_add),
-                label: const Text('Go to Journal Entry'),
-                onPressed: () => _navigateToJournalPage(context),
-              ),
-            ),
-          ),
+          // Padding(
+          //   padding: const EdgeInsets.all(16.0),
+          //   child: SizedBox(
+          //     width: double.infinity,
+          //     child: ElevatedButton.icon(
+          //       icon: const Icon(Icons.note_add),
+          //       label: const Text('Go to Journal Entry'),
+          //       onPressed: () => _navigateToJournalPage(context),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

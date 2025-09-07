@@ -7,11 +7,11 @@ class ResponsiveBookingListUtils {
   }
 
   static double getCalendarWidthRatio(BuildContext context) {
-    return 0.6; // 60% width for calendar
+    return 0.4; // 40% width for calendar
   }
 
   static double getTaskListWidthRatio(BuildContext context) {
-    return 0.4; // 40% width for task list
+    return 0.5; // 50% width for task list
   }
 
   static EdgeInsets getSectionPadding(BuildContext context) {

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:workmate_app/model/work_item.dart';
-import 'package:workmate_app/widgets/journal/workitem_journal.dart';
+
+// Models
+import '../../model/work_item.dart';
+
+// Widgets
+import '../../widgets/journal/workitem_journal.dart';
 
 class WorkItemTile extends StatefulWidget {
   const WorkItemTile({super.key, required this.workItem});
@@ -30,44 +34,42 @@ class _WorkItemTile extends State<WorkItemTile> {
   }
 
   Widget workItemListTile(WorkItem workItemByIndex) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-              style: const TextStyle(fontWeight: FontWeight.w700),
-              '${workItemByIndex.serviceName} ${workItemByIndex.getWorkItemStatusString()}'),
-          Row(
-            children: <Widget>[
-              CircleAvatar(
-                backgroundColor: workItemByIndex.getIconColorBasedOnStatus(),
-                child: workItemByIndex.getIconBasedOnStatus(),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text('Assigned to : ${workItemByIndex.assignedUserName}'),
-                      Text(
-                          'Duration : ${durationToString(workItemByIndex.duration)}'),
-                    ],
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+            style: const TextStyle(fontWeight: FontWeight.w700),
+            '${workItemByIndex.serviceName} ${workItemByIndex.getWorkItemStatusString()}'),
+        Row(
+          children: <Widget>[
+            CircleAvatar(
+              backgroundColor: workItemByIndex.getIconColorBasedOnStatus(),
+              child: workItemByIndex.getIconBasedOnStatus(),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Assigned to : ${workItemByIndex.assignedUserName}'),
+                    Text(
+                        'Duration : ${durationToString(workItemByIndex.duration)}'),
+                  ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Text('Rego : ${workItemByIndex.rego}'),
-                  Text('Cost:\$${workItemByIndex.cost}')
-                ],
-              ),
-            ],
-          ),
-          const Divider(color: Colors.black)
-        ],
-      ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                Text('Rego : ${workItemByIndex.rego}'),
+                Text('Cost:\$${workItemByIndex.cost}')
+              ],
+            ),
+          ],
+        ),
+        const Divider(color: Colors.black)
+      ],
     );
   }
 

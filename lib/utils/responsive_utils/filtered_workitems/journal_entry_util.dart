@@ -20,6 +20,14 @@ class ResponsiveJournalUtils {
   }
 
   static double getImageHeight(BuildContext context) {
-    return isWideScreen(context) ? 300.0 : 200.0;
+    return isWideScreen(context) ? 200.0 : 150.0;
+  }
+
+  static double getMaxWidth(BuildContext context) {
+    return isWideScreen(context) ? 800.0 : double.infinity;
+  }
+
+  static Alignment getAlignment(BuildContext context) {
+    return isWideScreen(context) ? Alignment.center : Alignment.topLeft;
   }
 }

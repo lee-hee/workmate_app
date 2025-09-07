@@ -1,4 +1,7 @@
-// Packages
+// To do:
+// 1. add formKey validator
+// 2. attach image logic
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,10 +20,10 @@ class JournalFormPage extends StatefulWidget {
 class _JournalFormPageState extends State<JournalFormPage> {
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _costController = TextEditingController();
-  final TextEditingController _timeController = TextEditingController();
+  // final TextEditingController _timeController = TextEditingController();
   String? _selectedRecordType;
 
-  XFile? _pickedImage;
+  final List<XFile> _pickedImages = [];
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _recordTypes = [
@@ -29,45 +32,99 @@ class _JournalFormPageState extends State<JournalFormPage> {
     'Inspection',
   ];
 
+  // Duration picker method
+  TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
+  bool _isDurationValid = true;
+
+  void _pickDuration() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 0, minute: 0),
+      helpText: 'Select Duration (Hh:Mm)',
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDuration = picked;
+        _isDurationValid = true; // Reset validation on successful selection
+      });
+    }
+  }
+
+  bool _validateDuration() {
+    if (_selectedDuration.hour == 0 && _selectedDuration.minute == 0) {
+      setState(() {
+        _isDurationValid = false;
+      });
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(
-      source: ImageSource.camera, // camera or gallery
+      source: ImageSource.camera,
       maxWidth: 800,
     );
 
     if (image != null) {
       setState(() {
-        _pickedImage = image;
+        _pickedImages.add(image);
       });
     }
   }
 
   void _submitForm() {
-    // Method of submission
     if (_selectedRecordType == null ||
         _detailsController.text.isEmpty ||
-        _pickedImage == null) {
+        _pickedImages.isEmpty ||
+        !_validateDuration()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all fields')),
       );
       return;
     }
 
+    final durationMinutes =
+        (_selectedDuration.hour * 60) + _selectedDuration.minute;
+
     print('Record Type: $_selectedRecordType');
     print('Details: ${_detailsController.text}');
     print('Cost: ${_costController.text}');
-    print('Time: ${_timeController.text}');
-    print('Image Path: ${_pickedImage!.path}');
+    // print('Time: ${_timeController.text}');
+    print('Duration (minutes): $durationMinutes');
+    for (var image in _pickedImages) {
+      print('Image Path: ${image.path}');
+    }
+    // Clear form after submission
+    setState(() {
+      _selectedRecordType = null;
+      _detailsController.clear();
+      _costController.clear();
+      // _timeController.clear();
+      _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
+      _isDurationValid = true;
+      _pickedImages.clear();
+    });
+    Navigator.pop(context); // Return to previous screen
+  }
+
+  void _cancelForm() {
+    Navigator.pop(context); // Return to previous screen
   }
 
   @override
   Widget build(BuildContext context) {
     final isWide = ResponsiveJournalUtils.isWideScreen(context);
 
-    Widget formFields = Column(
+    Widget leftColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Dropdown
         const Text('Journal record type'),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
@@ -83,8 +140,6 @@ class _JournalFormPageState extends State<JournalFormPage> {
           decoration: const InputDecoration(border: OutlineInputBorder()),
         ),
         SizedBox(height: ResponsiveJournalUtils.getFieldSpacing(context)),
-
-        // Text area
         const Text('Journal record detail'),
         const SizedBox(height: 6),
         SizedBox(
@@ -100,36 +155,6 @@ class _JournalFormPageState extends State<JournalFormPage> {
           ),
         ),
         SizedBox(height: ResponsiveJournalUtils.getFieldSpacing(context)),
-
-        // Cost adjustment
-        const Text('Cost adjustment'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _costController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Enter cost',
-            prefixIcon: Icon(Icons.attach_money),
-          ),
-        ),
-        SizedBox(height: ResponsiveJournalUtils.getFieldSpacing(context)),
-
-        // Time adjustment
-        const Text('Time adjustment'),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _timeController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Enter time in hours',
-            prefixIcon: Icon(Icons.timer),
-          ),
-        ),
-        SizedBox(height: ResponsiveJournalUtils.getFieldSpacing(context)),
-
-        // Attach Photo
         const Text('Attach Photo'),
         const SizedBox(height: 6),
         GestureDetector(
@@ -142,143 +167,139 @@ class _JournalFormPageState extends State<JournalFormPage> {
               borderRadius: BorderRadius.circular(8),
               color: Colors.grey[100],
             ),
-            child: _pickedImage == null
+            child: _pickedImages.isEmpty
                 ? const Center(child: Text('Tap to add photo'))
-                : (kIsWeb
-                    ? Image.network(
-                        _pickedImage!.path,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.file(
-                        File(_pickedImage!.path),
-                        fit: BoxFit.cover,
-                      )),
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _pickedImages.map((image) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: (kIsWeb
+                              ? Image.network(image.path,
+                                  height: ResponsiveJournalUtils.getImageHeight(
+                                      context),
+                                  fit: BoxFit.cover)
+                              : Image.file(File(image.path),
+                                  height: ResponsiveJournalUtils.getImageHeight(
+                                      context),
+                                  fit: BoxFit.cover)),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+
+    Widget rightColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Cost adjustment'),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _costController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Enter cost',
+            prefixIcon: Icon(Icons.attach_money),
           ),
         ),
         SizedBox(height: ResponsiveJournalUtils.getFieldSpacing(context)),
-
-        // Submit Button
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.zero,
+        const Text('Duration (Hh:Mm)'),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _pickDuration,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              errorText: _isDurationValid ? null : 'Duration cannot be empty',
+            ),
+            child: Text(
+              '${_selectedDuration.hour.toString().padLeft(2, '0')}h:${_selectedDuration.minute.toString().padLeft(2, '0')}m',
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).textTheme.bodyMedium!.color,
               ),
             ),
-            onPressed: _submitForm,
-            child: const Text('Add'),
           ),
-        )
+        ),
+      ],
+    );
+
+    Widget buttonRow = Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton(
+          onPressed: _cancelForm,
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: 8.0),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+            ),
+          ),
+          onPressed: _submitForm,
+          child: const Text('Add'),
+        ),
       ],
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Work item journal records')),
-      body: Padding(
-        padding: ResponsiveJournalUtils.getPagePadding(context),
-        child: SingleChildScrollView(
-          child: isWide
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: formFields),
-                    const SizedBox(width: 40),
-                    Expanded(
-                      child: _pickedImage == null
-                          ? Container(
-                              height: ResponsiveJournalUtils.getImageHeight(
-                                  context),
-                              decoration: BoxDecoration(
-                                border:
-                                    Border.all(color: Colors.grey, width: 1),
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.grey[200],
-                              ),
-                              child: const Center(
-                                  child: Text('Image will preview here')),
-                            )
-                          : (kIsWeb
-                              ? Image.network(
-                                  _pickedImage!.path,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.file(
-                                  File(_pickedImage!.path),
-                                  fit: BoxFit.cover,
-                                )),
+      appBar: AppBar(title: const Text('Work Item Journal Records')),
+      body: Align(
+        alignment: ResponsiveJournalUtils.getAlignment(context),
+        child: SizedBox(
+          width: ResponsiveJournalUtils.getMaxWidth(context),
+          child: Padding(
+            padding: ResponsiveJournalUtils.getPagePadding(context),
+            child: SingleChildScrollView(
+              child: isWide
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: leftColumn,
+                            ),
+                            const SizedBox(width: 40),
+                            Expanded(
+                              flex: 1,
+                              child: rightColumn,
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                            height: ResponsiveJournalUtils.getFieldSpacing(
+                                context)),
+                        buttonRow,
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        leftColumn,
+                        SizedBox(
+                            height: ResponsiveJournalUtils.getFieldSpacing(
+                                context)),
+                        rightColumn,
+                        SizedBox(
+                            height: ResponsiveJournalUtils.getFieldSpacing(
+                                context)),
+                        buttonRow,
+                      ],
                     ),
-                  ],
-                )
-              : formFields,
+            ),
+          ),
         ),
       ),
     );
   }
 }
-
-// import 'dart:io';
-
-// import 'package:flutter/material.dart';
-// import 'package:image_picker/image_picker.dart';
-
-// class ImageInput extends StatefulWidget {
-//   const ImageInput({super.key});
-
-//   @override
-//   State<ImageInput> createState() {
-//     return _ImageInputState();
-//   }
-// }
-
-// class _ImageInputState extends State<ImageInput> {
-//   File? _selectedImage;
-
-//   void _takePicture() async {
-//     final imagePicker = ImagePicker();
-//     final pickedImage =
-//         await imagePicker.pickImage(source: ImageSource.camera, maxWidth: 600);
-
-//     if (pickedImage == null) {
-//       return;
-//     }
-
-//     setState(() {
-//       _selectedImage = File(pickedImage.path);
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     Widget content = TextButton.icon(
-//       icon: const Icon(Icons.camera),
-//       label: const Text('Take Picture'),
-//       onPressed: _takePicture,
-//     );
-
-//     if (_selectedImage != null) {
-//       content = GestureDetector(
-//         onTap: _takePicture,
-//         child: Image.file(
-//           _selectedImage!,
-//           fit: BoxFit.cover,
-//           width: double.infinity,
-//           height: double.infinity,
-//         ),
-//       );
-//     }
-
-//     return Container(
-//       decoration: BoxDecoration(
-//         border: Border.all(
-//           width: 1,
-//           color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-//         ),
-//       ),
-//       height: 250,
-//       width: double.infinity,
-//       alignment: Alignment.center,
-//       child: content,
-//     );
-//   }
-// }

@@ -4,11 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:workmate_app/model/service_item.dart';
 import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart'
     as picker;
-import 'package:workmate_app/utils/responsive_utils/new_bookings/new_booking_util.dart';
-import 'package:workmate_app/widgets/new_booking/add_service_item.dart';
+
+// Models
+import '../../model/service_item.dart';
+
+// Utils
+import '../../utils/responsive_utils/new_bookings/new_booking_util.dart';
+
+// Widgets
+import '../../widgets/new_booking/add_service_item.dart';
 
 // Config
 import '../../config/backend_config.dart';
@@ -103,26 +109,32 @@ class _NewBookingState extends State<NewBooking> {
     final String formattedBookingDateTime =
         serverDateFormater.format(bookingDateTime!);
     final response = await http.post(url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(
-          {
-            'customerPhone': _enteredPhoneNumber,
-            'rego': _enteredRego,
-            'serviceItemId': selectedServiceItemId,
-            'serviceItemIds': selectedOfferIds,
-            'bookingDateTime': formattedBookingDateTime
-          },
-        ));
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'customerPhone': _enteredPhoneNumber,
+          'rego': _enteredRego,
+          'serviceItemId': selectedServiceItemId,
+          'serviceItemIds': selectedOfferIds,
+          'bookingDateTime': formattedBookingDateTime
+        }));
     return response.statusCode;
   }
 
+  // Open service selection overlay
   void openServiceSelectionOverlay() {
+    if (vehicalMakeController.text.isEmpty ||
+        vehicalModelController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill vehicle details first.')),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       builder: (ctx) => NewServiceItem(
-          onAddServiceOffer: _addServiceoffer, serviceOffers: serviceOffers),
+        onAddServiceOffer: _addServiceoffer,
+        serviceOffers: serviceOffers,
+      ),
     );
   }
 
@@ -170,7 +182,7 @@ class _NewBookingState extends State<NewBooking> {
 
       setState(() => bookingDateTime = combined);
     } else {
-      // Mobile: bottom-sheet from the package
+      // Mobile: bottom-sheet
       picker.DatePicker.showDateTimePicker(
         context,
         showTitleActions: true,
@@ -202,19 +214,45 @@ class _NewBookingState extends State<NewBooking> {
                 child: Stepper(
                   currentStep: _currentStep,
                   onStepContinue: () {
-                    if (_currentStep < 3) {
+                    // if (_currentStep < 3) {
+                    //   setState(() {
+                    //     _currentStep += 1;
+                    //   });
+                    // }
+                    // Prevent invalid index error
+                    if (_currentStep >= 0 && _currentStep < 2) {
                       setState(() {
                         _currentStep += 1;
                       });
                     }
+                    // if (_currentStep == 2) {
+                    //   if (!offersLoaded) {
+                    //     _loadServiceItems(vehicalMakeController.text,
+                    //         vehicalModelController.text);
+                    //   }
+                    // }
+                    // Validate before loading service items
                     if (_currentStep == 2) {
+                      if (vehicalMakeController.text.isEmpty ||
+                          vehicalModelController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('Please fill vehicle details first.')),
+                        );
+                        return;
+                      }
+
                       if (!offersLoaded) {
                         _loadServiceItems(vehicalMakeController.text,
                             vehicalModelController.text);
                       }
                     }
+                    // Handle last step (Submit)
                     if (_currentStep == 3) {
-                      if (_formKey.currentState!.validate()) {
+                      if (_formKey.currentState!.validate() &&
+                          bookingDateTime != null &&
+                          selectedServiceOffers.isNotEmpty) {
                         _formKey.currentState!.save();
                         //Create customer
                         _createCustomer();
@@ -222,10 +260,14 @@ class _NewBookingState extends State<NewBooking> {
                         _createServiceVehical();
                         //Create booking
                         _createBooking();
-                        setState(() {
-                          _currentStep -= 1;
-                        });
+                        // setState(() {
+                        //   _currentStep -= 1;
+                        // });
                         Navigator.of(context).pop();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text(
+                                'Please complete all fields before booking.')));
                       }
                     }
                   },
@@ -315,11 +357,14 @@ class _NewBookingState extends State<NewBooking> {
                             label: Text('Rego'),
                           ),
                           validator: (value) {
+                            // if (value == null ||
+                            //     value.isEmpty ||
+                            //     value.trim().length <= 1 ||
+                            //     value.trim().length > 7)
                             if (value == null ||
                                 value.isEmpty ||
-                                value.trim().length <= 1 ||
-                                value.trim().length > 7) {
-                              return 'Rego must be 6 charachers';
+                                !RegExp(r'^[a-zA-Z0-9]{6}$').hasMatch(value)) {
+                              return 'Rego must be 6 characters';
                             }
                             return null;
                           },
@@ -341,9 +386,16 @@ class _NewBookingState extends State<NewBooking> {
                                 value.isEmpty ||
                                 value.trim().length <= 1 ||
                                 value.trim().length > 15) {
-                              return 'Make is not valid';
+                              return 'Make can only contain letters.';
+                              //   if (value == null ||
+                              //     value.isEmpty ||
+                              //     value.trim().length <= 1 ||
+                              //     value.trim().length > 15 ||
+                              //     !RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                              //   return 'Make must be 1-15 alphanumeric characters.';
+                              // }
                             }
-                            return null;
+                            return null; // Valid input
                           },
                           onSaved: (value) {
                             // if (value == null) {
@@ -359,11 +411,15 @@ class _NewBookingState extends State<NewBooking> {
                             label: Text('Model'),
                           ),
                           validator: (value) {
-                            if (value == null ||
-                                value.isEmpty ||
-                                value.trim().length <= 1 ||
+                            if (value == null || value.isEmpty) {
+                              return 'Model is required';
+                            }
+                            if (value.trim().length < 2 ||
                                 value.trim().length > 15) {
-                              return 'Model is not valid';
+                              return 'Model must be 2-15 characters';
+                            }
+                            if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                              return 'Model can only contain letters and numbers';
                             }
                             return null;
                           },

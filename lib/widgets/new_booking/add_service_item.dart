@@ -19,17 +19,37 @@ class NewServiceItem extends StatefulWidget {
 }
 
 class _NewServiceItemState extends State<NewServiceItem> {
-  late ServiceOffer _selectedOffer;
+  ServiceOffer? _selectedOffer; // Changed to nullable to handle empty list
 
-  void _submitSlectedOffersData() {
-    widget.onAddServiceOffer(_selectedOffer);
+  // Submit selected service offer data
+  void _submitSelectedOffersData() {
+    // Ensure a service is selected before adding
+    // Show error if no service is selected
+    if (_selectedOffer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a service to add.')),
+      );
+      return;
+    }
+    widget.onAddServiceOffer(_selectedOffer!);
     Navigator.pop(context);
   }
 
   @override
-  void dispose() {
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Set default selection if serviceOffers is not empty
+    if (widget.serviceOffers.isNotEmpty) {
+      _selectedOffer = widget.serviceOffers[0];
+    } else {
+      _selectedOffer = null;
+    }
   }
+
+  // @override
+  // void dispose() {
+  //   super.dispose();
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -47,27 +67,57 @@ class _NewServiceItemState extends State<NewServiceItem> {
               InputDecorator(
                 decoration: const InputDecoration(border: OutlineInputBorder()),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton(
+                  // Wrap DropdownButton to hide underline
+                  child: DropdownButton<ServiceOffer>(
                     isExpanded: true,
                     borderRadius: BorderRadius.circular(2.5),
-                    value: widget.serviceOffers[0],
-                    items: [
-                      for (final serviceOffer in widget.serviceOffers)
-                        DropdownMenuItem(
-                          value: serviceOffer,
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 6),
-                              Text(serviceOffer.name,
-                                  style: const TextStyle(fontSize: 20.0)),
-                            ],
-                          ),
-                        )
-                    ],
+                    // value: widget.serviceOffers[0],
+                    value: _selectedOffer, // Use the state variable
+                    hint: widget.serviceOffers.isEmpty
+                        ? const Text('No services available')
+                        : null,
+                    // Dropdown menu items - loop through serviceOffers
+                    // items: [
+                    //   for (final serviceOffer in widget.serviceOffers)
+                    //     DropdownMenuItem(
+                    //       value: serviceOffer,
+                    //       child: Row(
+                    //         children: [
+                    //           const SizedBox(width: 6),
+                    //           Text(serviceOffer.name,
+                    //               style: const TextStyle(fontSize: 20.0)),
+                    //         ],
+                    //       ),
+                    //     )
+                    // ],
+                    // onChanged: (value) {
+                    //   if (value == null) {
+                    //     return;
+                    //   }
+                    //   setState(() {
+                    //     _selectedOffer = value;
+                    //   });
+                    // },
+
+                    // Handle empty serviceOffers list
+                    items: widget.serviceOffers.isEmpty
+                        ? []
+                        : [
+                            for (final serviceOffer in widget.serviceOffers)
+                              DropdownMenuItem(
+                                value: serviceOffer,
+                                child: Row(
+                                  children: [
+                                    const SizedBox(width: 6),
+                                    Text(serviceOffer.name,
+                                        style: const TextStyle(fontSize: 20.0)),
+                                  ],
+                                ),
+                              )
+                          ],
+                    // Disable onChanged if no services are available
                     onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
+                      if (value == null) return;
                       setState(() {
                         _selectedOffer = value;
                       });
@@ -88,7 +138,7 @@ class _NewServiceItemState extends State<NewServiceItem> {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: _submitSlectedOffersData,
+                  onPressed: _submitSelectedOffersData,
                   child: const Text('Add service'),
                 ),
               ],

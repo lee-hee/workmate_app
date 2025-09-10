@@ -27,40 +27,40 @@ class WorkItemJournalListTile extends StatelessWidget {
           Text('Cost: \$${journalRecord.newCost}'),
 
         // If there is a single image
-        // if (journalRecord.imageUrl != null &&
-        //     journalRecord.imageUrl!.isNotEmpty)
-        //   Padding(
-        //     padding: const EdgeInsets.only(top: 8.0),
-        //     child: Image.network(
-        //       journalRecord.imageUrl!,
-        //       height: ResponsiveJournalUtils.getImageHeight(context),
-        //       fit: BoxFit.cover,
-        //     ),
-        //   ),
-
-        // If there is list of images
-        const SizedBox(height: 8.0),
-
-        // Horizontal scrollable image gallery
-        if (journalRecord.imageUrls.isNotEmpty)
-          SizedBox(
-            height: 120,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: journalRecord.imageUrls.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    journalRecord.imageUrls[index],
-                    width: 150,
-                    fit: BoxFit.cover,
-                  ),
-                );
-              },
+        if (journalRecord.imageUrl != null &&
+            journalRecord.imageUrl!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Image.network(
+              journalRecord.imageUrl!,
+              height: ResponsiveJournalUtils.getImageHeight(context),
+              fit: BoxFit.cover,
             ),
           ),
+
+        // If there is list of images
+        // const SizedBox(height: 8.0),
+
+        // Horizontal scrollable image gallery
+        // if (journalRecord.imageUrls.isNotEmpty)
+        //   SizedBox(
+        //     height: 120,
+        //     child: ListView.separated(
+        //       scrollDirection: Axis.horizontal,
+        //       itemCount: journalRecord.imageUrls.length,
+        //       separatorBuilder: (context, index) => const SizedBox(width: 8),
+        //       itemBuilder: (context, index) {
+        //         return ClipRRect(
+        //           borderRadius: BorderRadius.circular(8),
+        //           child: Image.network(
+        //             journalRecord.imageUrls[index],
+        //             width: 150,
+        //             fit: BoxFit.cover,
+        //           ),
+        //         );
+        //       },
+        //     ),
+        //   ),
         const Divider(color: Colors.black),
       ],
     );

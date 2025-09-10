@@ -23,7 +23,8 @@ class _JournalFormPageState extends State<JournalFormPage> {
   // final TextEditingController _timeController = TextEditingController();
   String? _selectedRecordType;
 
-  final List<XFile> _pickedImages = [];
+  // final List<XFile> _pickedImages = [];
+  XFile? _pickedImage;
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _recordTypes = [
@@ -74,7 +75,8 @@ class _JournalFormPageState extends State<JournalFormPage> {
 
     if (image != null) {
       setState(() {
-        _pickedImages.add(image);
+        // _pickedImages.add(image);
+        _pickedImage = image;
       });
     }
   }
@@ -82,7 +84,7 @@ class _JournalFormPageState extends State<JournalFormPage> {
   void _submitForm() {
     if (_selectedRecordType == null ||
         _detailsController.text.isEmpty ||
-        _pickedImages.isEmpty ||
+        _pickedImage == null ||
         !_validateDuration()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all fields')),
@@ -98,9 +100,11 @@ class _JournalFormPageState extends State<JournalFormPage> {
     print('Cost: ${_costController.text}');
     // print('Time: ${_timeController.text}');
     print('Duration (minutes): $durationMinutes');
-    for (var image in _pickedImages) {
-      print('Image Path: ${image.path}');
-    }
+    // for (var image in _pickedImages) {
+    //   print('Image Path: ${image.path}');
+    // }
+    print('Image Path: ${_pickedImage!.path}');
+
     // Clear form after submission
     setState(() {
       _selectedRecordType = null;
@@ -109,7 +113,8 @@ class _JournalFormPageState extends State<JournalFormPage> {
       // _timeController.clear();
       _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
       _isDurationValid = true;
-      _pickedImages.clear();
+      // _pickedImages.clear();
+      _pickedImage = null;
     });
     Navigator.pop(context); // Return to previous screen
   }
@@ -167,27 +172,39 @@ class _JournalFormPageState extends State<JournalFormPage> {
               borderRadius: BorderRadius.circular(8),
               color: Colors.grey[100],
             ),
-            child: _pickedImages.isEmpty
+            // child: _pickedImages.isEmpty
+            child: (_pickedImage == null
                 ? const Center(child: Text('Tap to add photo'))
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _pickedImages.map((image) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: (kIsWeb
-                              ? Image.network(image.path,
-                                  height: ResponsiveJournalUtils.getImageHeight(
-                                      context),
-                                  fit: BoxFit.cover)
-                              : Image.file(File(image.path),
-                                  height: ResponsiveJournalUtils.getImageHeight(
-                                      context),
-                                  fit: BoxFit.cover)),
-                        );
-                      }).toList(),
-                    ),
-                  ),
+                // : SingleChildScrollView(
+                //     scrollDirection: Axis.horizontal,
+                //     child: Row(
+                //       children: _pickedImages.map((image) {
+                //         return Padding(
+                //           padding: const EdgeInsets.only(right: 8.0),
+                //           child: (kIsWeb
+                //               ? Image.network(image.path,
+                //                   height: ResponsiveJournalUtils.getImageHeight(
+                //                       context),
+                //                   fit: BoxFit.cover)
+                //               : Image.file(File(image.path),
+                //                   height: ResponsiveJournalUtils.getImageHeight(
+                //                       context),
+                //                   fit: BoxFit.cover)),
+                //         );
+                //       }).toList(),
+                //     ),
+                //   )
+                : (kIsWeb
+                    ? Image.network(
+                        _pickedImage!.path,
+                        height: ResponsiveJournalUtils.getImageHeight(context),
+                        fit: BoxFit.cover,
+                      )
+                    : Image.file(
+                        File(_pickedImage!.path),
+                        height: ResponsiveJournalUtils.getImageHeight(context),
+                        fit: BoxFit.cover,
+                      ))),
           ),
         ),
       ],

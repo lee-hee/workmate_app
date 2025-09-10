@@ -62,8 +62,8 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
             newCompletionDateTime: entry['newWorkItemCompletionDate'],
             newCost: entry['newWorkItemCost'],
             note: entry['note'],
-            // imageUrl: entry['imageUrl'], // Single image
-            imageUrls: [], // Placeholder for multiple images
+            imageUrl: entry['imageUrl'], // Single image
+            // imageUrls: [], // Placeholder for multiple images
             journalType: entry['workItemJournalType']));
       }
       return journalRecordList;
@@ -125,13 +125,12 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
                       : ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          // itemCount: loadedJournalRecords.length,
-                          itemCount: sampleJournalRecords.length,
-                          // itemBuilder:
-                          //     (BuildContext context, int position) {
-                          //   final record = loadedJournalRecords[position];
-                          itemBuilder: (BuildContext context, int index) {
-                            final record = sampleJournalRecords[index];
+                          itemCount: loadedJournalRecords.length,
+                          // itemCount: sampleJournalRecords.length,
+                          itemBuilder: (BuildContext context, int position) {
+                            final record = loadedJournalRecords[position];
+                            // itemBuilder: (BuildContext context, int index) {
+                            //   final record = sampleJournalRecords[index];
                             return Card(
                               margin: const EdgeInsets.symmetric(vertical: 8.0),
                               child: ListTile(

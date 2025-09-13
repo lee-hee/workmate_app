@@ -134,10 +134,11 @@ class _BookingCalenderState extends State<BookingCalender> {
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Calendar Section (60% width)
+                // Calendar Section
                 SizedBox(
                   width: MediaQuery.of(context).size.width *
-                      ResponsiveBookingListUtils.getCalendarWidthRatio(context),
+                      ResponsiveBookingListUtils.getCalendarWidthRatioNew(
+                          context),
                   child: Padding(
                     padding:
                         ResponsiveBookingListUtils.getSectionPadding(context),
@@ -230,7 +231,7 @@ class _BookingCalenderState extends State<BookingCalender> {
                     ),
                   ),
                 ),
-                // Task List Section (40% width)
+                // Task List Section (50% width)
                 Expanded(
                   child: Padding(
                     padding:

@@ -11,6 +11,7 @@ import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart'
 import '../../model/service_item.dart';
 
 // Utils
+import '../../utils/common/custom_snackbar.dart';
 import '../../utils/responsive_utils/new_bookings/new_booking_util.dart';
 
 // Widgets
@@ -124,8 +125,9 @@ class _NewBookingState extends State<NewBooking> {
   void openServiceSelectionOverlay() {
     if (vehicalMakeController.text.isEmpty ||
         vehicalModelController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill vehicle details first.')),
+      CustomSnackBar.showMessageSnackBar(
+        context,
+        'Please fill vehicle details first.',
       );
       return;
     }
@@ -173,10 +175,8 @@ class _NewBookingState extends State<NewBooking> {
           DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
       if (combined.isBefore(min) || combined.isAfter(max)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Please pick a time within the allowed range.')),
-        );
+        CustomSnackBar.showWarning(
+            context, 'Please pick a time within the allowed range.');
         return;
       }
 
@@ -235,10 +235,9 @@ class _NewBookingState extends State<NewBooking> {
                     if (_currentStep == 2) {
                       if (vehicalMakeController.text.isEmpty ||
                           vehicalModelController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('Please fill vehicle details first.')),
+                        CustomSnackBar.showMessageSnackBar(
+                          context,
+                          'Please fill vehicle details first.',
                         );
                         return;
                       }
@@ -265,9 +264,10 @@ class _NewBookingState extends State<NewBooking> {
                         // });
                         Navigator.of(context).pop();
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text(
-                                'Please complete all fields before booking.')));
+                        CustomSnackBar.showMessageSnackBar(
+                          context,
+                          'Please complete all fields before booking.',
+                        );
                       }
                     }
                   },

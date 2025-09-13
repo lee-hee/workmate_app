@@ -6,6 +6,9 @@ import '../../model/work_item_journal_record.dart';
 // Utils
 import '../../utils/responsive_utils/filtered_workitems/journal_entry_util.dart';
 
+// Config
+import '../../config/backend_config.dart';
+
 class WorkItemJournalListTile extends StatelessWidget {
   final WorkItemJournalRecord journalRecord;
 
@@ -32,35 +35,12 @@ class WorkItemJournalListTile extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Image.network(
-              journalRecord.imageUrl!,
+              BackendConfig.getUri('v1/journal-image/${journalRecord.imageUrl}')
+                  .toString(),
               height: ResponsiveJournalUtils.getImageHeight(context),
               fit: BoxFit.cover,
             ),
           ),
-
-        // If there is list of images
-        // const SizedBox(height: 8.0),
-
-        // Horizontal scrollable image gallery
-        // if (journalRecord.imageUrls.isNotEmpty)
-        //   SizedBox(
-        //     height: 120,
-        //     child: ListView.separated(
-        //       scrollDirection: Axis.horizontal,
-        //       itemCount: journalRecord.imageUrls.length,
-        //       separatorBuilder: (context, index) => const SizedBox(width: 8),
-        //       itemBuilder: (context, index) {
-        //         return ClipRRect(
-        //           borderRadius: BorderRadius.circular(8),
-        //           child: Image.network(
-        //             journalRecord.imageUrls[index],
-        //             width: 150,
-        //             fit: BoxFit.cover,
-        //           ),
-        //         );
-        //       },
-        //     ),
-        //   ),
         const Divider(color: Colors.black),
       ],
     );

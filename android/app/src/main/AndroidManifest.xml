@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- Permissions to access phone features -->
+<uses-permission android:name="android.permission.CALL_PHONE"/>
     <application
         android:label="workmate_app"
         android:name="${applicationName}"

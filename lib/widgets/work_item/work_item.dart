@@ -1,11 +1,27 @@
+// TO DO: Check the url_launcher plugin is initialized in android/app/src/main/kotlin/MainActivity.java
+// Ex:
+// import io.flutter.embedding.android.FlutterActivity
+// import io.flutter.embedding.engine.FlutterEngine
+// import io.flutter.plugins.GeneratedPluginRegistrant
+
+// class MainActivity: FlutterActivity() {
+//     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+//         GeneratedPluginRegistrant.registerWith(flutterEngine)
+//     }
+// }
+
 // Packages
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Models
 import '../../model/service_item.dart';
 import '../../model/user.dart';
+import '../../model/work_item.dart';
 
 // Widgets
 import '../../widgets/booking_list/booking_calendar_container.dart';
@@ -34,6 +50,9 @@ class WorkItemPage extends StatefulWidget {
 class _WorkItemPageState extends State<WorkItemPage> {
   List<ServiceOffer> serviceOffers = [];
   List<User> users = [];
+  double totalCost = 0.0; // Total cost
+  DateTime? pickupTime; // For editable pickup
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +66,35 @@ class _WorkItemPageState extends State<WorkItemPage> {
         users = onValue;
       });
     });
+    // _fetchWorkItems(); // Initial fetch
   }
+
+  // Fetch work items from backend
+  // Future<void> _fetchWorkItems() async {
+  //   final url = BackendConfig.getUri('v1/workitems');
+  //   final response = await http.get(url);
+  //   if (response.statusCode == 200) {
+  //     final List data = json.decode(response.body);
+  //     final workItems = data
+  //         .map<WorkItem>((json) => WorkItem(
+  //               id: json['id'] ?? -1,
+  //               assignedUserName: json['userDto']?['name'] ?? 'Unassigned',
+  //               serviceName: json['serviceItemDto']?['serviceName'] ?? '',
+  //               duration:
+  //                   json['serviceItemDto']?['serviceDurationMinutes'] ?? 0,
+  //               rego: json['serviceVehicleDto']?['rego'] ?? '',
+  //               cost:
+  //                   (json['serviceItemDto']?['servicePrice'] ?? 0.0).toDouble(),
+  //               workItemStatus: json['workItemStatus'] ?? 'ASSIGNED',
+  //               startedDateTime: json['startTime']?.toString() ?? '',
+  //             ))
+  //         .where((wi) => wi.rego == widget.rego || widget.rego.isEmpty)
+  //         .toList();
+  //     _updateCostAndPickupTime(workItems);
+  //   } else {
+  //     throw Exception('Failed to fetch work items. Please try again later.');
+  //   }
+  // }
 
   Future<List<User>> loadUserData() async {
     final url = BackendConfig.getUri('config/users');
@@ -91,19 +138,76 @@ class _WorkItemPageState extends State<WorkItemPage> {
       for (final entry in serviceOffersData) {
         if (serviceItemIds.contains(entry['id'].toString())) {
           serviceOffers.add(ServiceOffer(
-              id: entry['id'],
-              name: entry['serviceName'],
-              bookingRef: bookingEntry.bookingRef));
+            id: entry['id'],
+            name: entry['serviceName'],
+            bookingRef: bookingEntry.bookingRef,
+          ));
         }
       }
     }
     return serviceOffers;
   }
 
+  //  Method to make a phone call
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    // Request phone call permission
+    print('Attempting to call: $phoneNumber');
+    var status = await Permission.phone.request();
+    if (status.isGranted) {
+      final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+      print('URI: $launchUri');
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+        print('Call launched');
+      } else {
+        print('Cannot launch $launchUri');
+        throw 'Could not launch $launchUri';
+      }
+    } else {
+      print('Permission denied');
+      throw 'Phone call permission denied';
+    }
+  }
+
+  // Update total cost and pickup time based on work items
+  void _updateCostAndPickupTime(List<WorkItem> workItems) {
+    setState(() {
+      // totalCost = workItems.fold(0.0, (sum, wi) => sum + wi.cost);
+      totalCost = workItems
+          .where((wi) => wi.rego == widget.rego)
+          .fold(0.0, (sum, wi) => sum + wi.cost);
+      print('Filtered by rego ${widget.rego}, Total Cost: $totalCost');
+      pickupTime = _calculatePickupFromWorkItems(workItems);
+    });
+  }
+
+  // Calculate pickup time
+  DateTime? _calculatePickupFromWorkItems(List<WorkItem> workItems) {
+    // Filter work items by Rego
+    final workItemsByRego =
+        workItems.where((wi) => wi.rego == widget.rego).toList();
+    if (workItemsByRego.isEmpty) return null;
+    final lastWorkItem = workItemsByRego.last;
+    // Parse start time; if empty, use current time
+    DateTime endTime = lastWorkItem.startedDateTime.isNotEmpty
+        ? DateTime.parse(lastWorkItem.startedDateTime)
+        : DateTime.now();
+    // Sum durations of all work items for specific Rego
+    final totalDuration =
+        workItemsByRego.fold(0, (sum, wi) => sum + wi.duration);
+    return endTime.add(Duration(minutes: totalDuration));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dropOffTime = DateFormat('HH:mm').format(DateTime.parse(
+        widget.bookingEntries[0].bookingTime)); // Format to HH:MM
+    final dropOffDate = DateTime.parse(widget.bookingEntries[0].bookingTime)
+        .toString()
+        .split(' ')[0];
+
     return Scaffold(
-        appBar: AppBar(title: const Text('Manage booking')),
+        appBar: AppBar(title: const Text('Manage Booking')),
         body: ResponsiveWorkItemUtils.isWideScreen(context)
             ? Padding(
                 padding: ResponsiveWorkItemUtils.getSectionPadding(context),
@@ -119,20 +223,48 @@ class _WorkItemPageState extends State<WorkItemPage> {
                         children: [
                           ListTile(
                               leading: IconButton(
-                                  onPressed: () => {},
+                                  onPressed: () => _makePhoneCall(widget
+                                      .bookingEntries[0]
+                                      .phone), // Click to call
                                   icon: const Icon(Icons.phone))),
                           ListTile(
                             title: const Text('Rego'),
-                            subtitle: Text(widget.rego),
+                            // subtitle: Text(widget.rego),
+                            // Show total cost next to rego
+                            subtitle: Text(
+                                '${widget.rego} - Total Cost: \$${totalCost.toStringAsFixed(2)}'),
                           ),
                           ListTile(
                             title: const Text('Drop off'),
-                            subtitle: Text(
-                                getBookingStartDateTime(widget.bookingEntries)),
+                            // subtitle: Text(
+                            //     getBookingStartDateTime(widget.bookingEntries)),
+                            subtitle:
+                                Text('$dropOffDate $dropOffTime'), // Formatted
                           ),
-                          const ListTile(
-                            title: Text('Pickup'),
-                            subtitle: Text('Future date'),
+                          ListTile(
+                            title: const Text('Pickup'),
+                            // Editable pickup time
+                            // subtitle: Text('Future date'),
+
+                            // Pickup time
+                            subtitle: TextFormField(
+                              initialValue: pickupTime != null
+                                  ? DateFormat('yyyy-MM-dd HH:mm')
+                                      .format(pickupTime!)
+                                  : '',
+                              decoration: const InputDecoration(
+                                  hintText: 'Select pickup time'),
+                              onChanged: (value) {
+                                try {
+                                  pickupTime = DateFormat('yyyy-MM-dd HH:mm')
+                                      .parse(value);
+                                  // TODO: POST to /v1/booking/{ref}/pickup/{pickupTime} if needed
+                                } catch (e) {
+                                  pickupTime = null;
+                                }
+                                setState(() {});
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -141,8 +273,14 @@ class _WorkItemPageState extends State<WorkItemPage> {
                     Expanded(
                       child: ServiceItemList(
                         serviceOffers: serviceOffers,
-                        slectableUsers: users,
+                        selectableUsers: users,
                         workItemId: -1,
+                        rego: widget.rego, // Pass rego for filtering
+                        // Callback to refresh total or pickup if needed
+                        onWorkItemStarted:
+                            (int workItemId, List<WorkItem> updatedWorkItems) {
+                          _updateCostAndPickupTime(updatedWorkItems);
+                        },
                       ),
                     ),
                   ],
@@ -151,30 +289,58 @@ class _WorkItemPageState extends State<WorkItemPage> {
             : Column(children: [
                 ListTile(
                     leading: IconButton(
-                        onPressed: () => {}, icon: const Icon(Icons.phone))),
+                        onPressed: () => _makePhoneCall(
+                            widget.bookingEntries[0].phone), // Click to call
+                        icon: const Icon(Icons.phone))),
                 ListTile(
                   title: const Text('Rego'),
-                  subtitle: Text(widget.rego),
+                  // subtitle: Text(widget.rego),
+                  subtitle: Text(
+                      '${widget.rego} - Total Cost: \$${totalCost.toStringAsFixed(2)}'),
                 ),
                 ListTile(
                   title: const Text('Drop off'),
+                  // subtitle:
+                  //     Text(getBookingStartDateTime(widget.bookingEntries)),
                   subtitle:
-                      Text(getBookingStartDateTime(widget.bookingEntries)),
+                      Text('$dropOffDate $dropOffTime'), // Formatted HH:MM
                 ),
-                const ListTile(
-                  title: Text('Pickup'),
-                  subtitle: Text('Future date'),
+                ListTile(
+                  title: const Text('Pickup'),
+                  // subtitle: Text('Future date'),
+                  subtitle: TextFormField(
+                    initialValue: pickupTime != null
+                        ? DateFormat('yyyy-MM-dd HH:mm').format(pickupTime!)
+                        : '',
+                    decoration:
+                        const InputDecoration(hintText: 'Select pickup time'),
+                    onChanged: (value) {
+                      try {
+                        pickupTime =
+                            DateFormat('yyyy-MM-dd HH:mm').parse(value);
+                        // TODO: POST to /v1/booking/{ref}/pickup/{pickupTime} if needed
+                      } catch (e) {
+                        pickupTime = null;
+                      }
+                      setState(() {});
+                    },
+                  ),
                 ),
                 Expanded(
                     child: ServiceItemList(
                   serviceOffers: serviceOffers,
-                  slectableUsers: users,
+                  selectableUsers: users,
                   workItemId: -1,
+                  rego: widget.rego, // Pass rego for filtering
+                  onWorkItemStarted:
+                      (int workItemId, List<WorkItem> updatedWorkItems) {
+                    _updateCostAndPickupTime(updatedWorkItems);
+                  },
                 ))
               ]));
   }
 
-  String getBookingStartDateTime(List<BookingEntry> bookingEntries) {
-    return bookingEntries[0].bookingTime;
-  }
+  // String getBookingStartDateTime(List<BookingEntry> bookingEntries) {
+  //   return bookingEntries[0].bookingTime;
+  // }
 }

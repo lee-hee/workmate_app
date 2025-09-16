@@ -214,54 +214,20 @@ class _NewBookingState extends State<NewBooking> {
                 child: Stepper(
                   currentStep: _currentStep,
                   onStepContinue: () {
-                    // if (_currentStep < 3) {
-                    //   setState(() {
-                    //     _currentStep += 1;
-                    //   });
-                    // }
-                    // Prevent invalid index error
-                    if (_currentStep >= 0 && _currentStep < 2) {
-                      setState(() {
-                        _currentStep += 1;
-                      });
-                    }
-                    // if (_currentStep == 2) {
-                    //   if (!offersLoaded) {
-                    //     _loadServiceItems(vehicalMakeController.text,
-                    //         vehicalModelController.text);
-                    //   }
-                    // }
-                    // Validate before loading service items
-                    if (_currentStep == 2) {
-                      if (vehicalMakeController.text.isEmpty ||
-                          vehicalModelController.text.isEmpty) {
-                        CustomSnackBar.showMessageSnackBar(
-                          context,
-                          'Please fill vehicle details first.',
-                        );
-                        return;
-                      }
+                    final isLastStep = _currentStep == 2;
 
-                      if (!offersLoaded) {
-                        _loadServiceItems(vehicalMakeController.text,
-                            vehicalModelController.text);
-                      }
-                    }
-                    // Handle last step (Submit)
-                    if (_currentStep == 3) {
+                    if (isLastStep) {
+                      // ---- Submit here ----
                       if (_formKey.currentState!.validate() &&
                           bookingDateTime != null &&
                           selectedServiceOffers.isNotEmpty) {
                         _formKey.currentState!.save();
-                        //Create customer
+                        // Create customer
                         _createCustomer();
-                        //Create service Vehicle
+                        // Create service vehicle
                         _createServiceVehical();
-                        //Create booking
+                        // Create booking
                         _createBooking();
-                        // setState(() {
-                        //   _currentStep -= 1;
-                        // });
                         Navigator.of(context).pop();
                       } else {
                         CustomSnackBar.showMessageSnackBar(
@@ -269,6 +235,24 @@ class _NewBookingState extends State<NewBooking> {
                           'Please complete all fields before booking.',
                         );
                       }
+                    } else {
+                      // ---- Go to next step ----
+                      if (_currentStep == 1 &&
+                          (vehicalMakeController.text.isEmpty ||
+                              vehicalModelController.text.isEmpty)) {
+                        CustomSnackBar.showMessageSnackBar(
+                          context,
+                          'Please fill vehicle details first.',
+                        );
+                        return;
+                      }
+
+                      if (_currentStep == 1 && !offersLoaded) {
+                        _loadServiceItems(vehicalMakeController.text,
+                            vehicalModelController.text);
+                      }
+
+                      setState(() => _currentStep += 1);
                     }
                   },
                   onStepCancel: () {

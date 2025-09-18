@@ -24,7 +24,9 @@ class WorkActionHomeScreen extends StatelessWidget {
     } else if ('list_booking' == actionKey) {
       navigatingWidget = const BookingCalender();
     } else if ('add_service_item' == actionKey) {
-      navigatingWidget = const ServiceItemScreen();
+      navigatingWidget = const ServiceItemScreen(
+        bookingRef: '',
+      );
     } else {
       navigatingWidget = const FilteredWorkItemScreen();
     }
@@ -69,7 +71,7 @@ class WorkActionHomeScreen extends StatelessWidget {
                   key: const Key('new_booking'),
                   action: const AppAction(
                       id: '1',
-                      title: 'Add New Booking',
+                      title: 'Register New Vehicle',
                       color: Color.fromARGB(9, 127, 152, 97)),
                   onActionSelected: () {
                     _selectAction(context, 'new_booking');

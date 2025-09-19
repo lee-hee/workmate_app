@@ -89,54 +89,14 @@ class _NewBookingState extends State<NewBooking> {
     }
     return null;
   }
-  // Booking data time picker for web
-  // void _pickDateTime() async {
-  //   // Limits
-  //   final min = DateTime(2024, 5, 5, 20, 50);
-  //   final max = DateTime(3020, 6, 7, 5, 9);
 
-  //   if (kIsWeb || MediaQuery.of(context).size.width > 600) {
-  //     // Web: use Material dialogs
-  //     final now = DateTime.now();
-  //     final initial = bookingDateTime ?? now;
-
-  //     final date = await showDatePicker(
-  //       context: context,
-  //       initialDate: initial,
-  //       firstDate: DateTime(min.year, min.month, min.day),
-  //       lastDate: DateTime(max.year, max.month, max.day),
-  //     );
-  //     if (date == null) return;
-
-  //     final time = await showTimePicker(
-  //       context: context,
-  //       initialTime: TimeOfDay.fromDateTime(initial),
-  //     );
-  //     if (time == null) return;
-
-  //     final combined =
-  //         DateTime(date.year, date.month, date.day, time.hour, time.minute);
-
-  //     if (combined.isBefore(min) || combined.isAfter(max)) {
-  //       CustomSnackBar.showWarning(
-  //           context, 'Please pick a time within the allowed range.');
-  //       return;
-  //     }
-
-  //     setState(() => bookingDateTime = combined);
-  //   } else {
-  //     // Mobile: bottom-sheet
-  //     picker.DatePicker.showDateTimePicker(
-  //       context,
-  //       showTitleActions: true,
-  //       minTime: min,
-  //       maxTime: max,
-  //       currentTime: bookingDateTime ?? DateTime.now(),
-  //       onConfirm: (date) => setState(() => bookingDateTime = date),
-  //       locale: picker.LocaleType.en,
-  //     );
-  //   }
-  // }
+  @override
+  void dispose() {
+    vehicleMakeController.dispose();
+    vehicleModelController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   // After successful booking, show dialog with countdown
   void _showSuccessDialog(String rego, String bookingRef) {
@@ -152,8 +112,9 @@ class _NewBookingState extends State<NewBooking> {
             timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
               if (countdown == 0) {
                 t.cancel();
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
+                // Navigator.of(context).pop();
+                Navigator.pushReplacement(
+                  context,
                   MaterialPageRoute(
                     builder: (_) => ServiceItemScreen(bookingRef: bookingRef),
                   ),

@@ -10,8 +10,8 @@ import '../../utils/common/custom_snackbar.dart';
 import '../../utils/responsive_utils/service_item/service_item_util.dart';
 
 class ServiceItemScreen extends StatefulWidget {
-  final String bookingRef;
-  const ServiceItemScreen({super.key, required this.bookingRef});
+  final String? bookingRef;
+  const ServiceItemScreen({super.key, this.bookingRef});
 
   @override
   State<ServiceItemScreen> createState() {
@@ -38,7 +38,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.bookingRef != null) {
+    if (widget.bookingRef != null && widget.bookingRef!.isNotEmpty) {
       _selectedBookingRef = widget.bookingRef;
       _fetchBookingByRef(widget.bookingRef!);
       _fetchServiceItems(widget.bookingRef!);
@@ -62,24 +62,31 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
             _selectedBookingRef = bookingRef;
           });
         } else {
-          CustomSnackBar.showMessageSnackBar(context, 'Booking not found.');
+          CustomSnackBar.showMessageSnackBar(
+              context, 'Booking not found for ref: $bookingRef');
         }
       } else {
-        CustomSnackBar.showMessageSnackBar(context, 'Failed to fetch booking.');
+        CustomSnackBar.showMessageSnackBar(
+            context, 'Failed to fetch booking: ${response.statusCode}');
       }
     } catch (e) {
-      CustomSnackBar.showMessageSnackBar(context, 'Error: $e');
+      CustomSnackBar.showMessageSnackBar(context, 'Error fetching booking: $e');
     }
   }
 
   // Fetch vehicle details by rego
   Future<Map<String, dynamic>> _fetchVehicleByRego(String rego) async {
     final url = BackendConfig.getUri('v1/vehicle/$rego');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {};
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(context, 'Error fetching vehicle: $e');
+      return {};
     }
-    return {};
   }
 
   // Fetch all booking details (multiple regos) by phone number
@@ -109,7 +116,8 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
             context, 'Failed to fetch bookings.');
       }
     } catch (e) {
-      CustomSnackBar.showMessageSnackBar(context, 'Error: $e');
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Error fetching bookings: $e');
     }
   }
 
@@ -208,10 +216,11 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
               context, 'Service item added successfully!');
         } else {
           CustomSnackBar.showMessageSnackBar(
-              context, 'Failed to save service item.');
+              context, 'Failed to save service item: ${response.statusCode}');
         }
       } catch (e) {
-        CustomSnackBar.showMessageSnackBar(context, 'Error: $e');
+        CustomSnackBar.showMessageSnackBar(
+            context, 'Error saving service item: $e');
       }
     }
   }
@@ -232,9 +241,17 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
     _modelController.clear();
     _serviceNameController.clear();
     _servicePriceController.clear();
+    _searchController.clear();
     setState(() {
       _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
       _isDurationValid = true;
+      _searchResults.clear();
+      _serviceItems.clear();
+      _selectedBookingRef = widget.bookingRef;
+      if (_selectedBookingRef != null) {
+        _fetchBookingByRef(_selectedBookingRef!);
+        _fetchServiceItems(_selectedBookingRef!);
+      }
     });
     Navigator.of(context).pop();
   }
@@ -257,32 +274,36 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           if (data['exists'] == true) {
-            final bookingUrl = BackendConfig.getUri('v1/booking/any/$query');
+            final bookingUrl =
+                BackendConfig.getUri('v1/booking-by-rego/$query');
             final bookingResponse = await http.get(bookingUrl);
             if (bookingResponse.statusCode == 200) {
-              final bookings = json.decode(bookingResponse.body) as List;
-              if (bookings.isNotEmpty) {
-                final booking = bookings[0];
-                final vehicle = await _fetchVehicleByRego(query);
-                setState(() {
-                  _makeController.text = vehicle['make'] ?? '';
-                  _modelController.text = vehicle['model'] ?? '';
-                  _selectedBookingRef = booking['bookingReferenceNumber'];
-                  _searchResults.clear();
-                });
-                _fetchServiceItems(_selectedBookingRef!);
-              } else {
-                CustomSnackBar.showMessageSnackBar(
-                    context, 'No booking found for rego.');
-              }
+              final booking = json.decode(bookingResponse.body);
+              final vehicle = await _fetchVehicleByRego(query);
+              setState(() {
+                _makeController.text = vehicle['make'] ?? '';
+                _modelController.text = vehicle['model'] ?? '';
+                _selectedBookingRef = booking['bookingReferenceNumber'];
+                _searchResults.clear();
+              });
+              _fetchServiceItems(_selectedBookingRef!);
+            } else if (bookingResponse.statusCode == 404) {
+              CustomSnackBar.showMessageSnackBar(
+                  context, 'No booking found for rego: $query');
+            } else {
+              CustomSnackBar.showMessageSnackBar(context,
+                  'Failed to fetch booking: ${bookingResponse.statusCode}');
             }
           } else {
             CustomSnackBar.showMessageSnackBar(
-                context, 'Vehicle not registered.');
+                context, 'Vehicle not registered: $query');
           }
+        } else {
+          CustomSnackBar.showMessageSnackBar(
+              context, 'Failed to check rego: ${response.statusCode}');
         }
       } catch (e) {
-        CustomSnackBar.showMessageSnackBar(context, 'Error: $e');
+        CustomSnackBar.showMessageSnackBar(context, 'Error searching rego: $e');
       }
     } else {
       await _fetchBookingsByPhone(query);
@@ -336,14 +357,8 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                     DropdownButton<bool>(
                       value: _isSearchingByRego,
                       items: const [
-                        DropdownMenuItem(
-                          value: true,
-                          child: Text('Rego'),
-                        ),
-                        DropdownMenuItem(
-                          value: false,
-                          child: Text('Phone'),
-                        ),
+                        DropdownMenuItem(value: true, child: Text('Rego')),
+                        DropdownMenuItem(value: false, child: Text('Phone')),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -352,13 +367,11 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                           _searchController.clear();
                           _makeController.clear();
                           _modelController.clear();
-                          _selectedBookingRef = widget.bookingRef;
-                          if (_selectedBookingRef != null) {
-                            _fetchBookingByRef(_selectedBookingRef!);
-                          }
+                          _selectedBookingRef = null;
+                          _serviceItems.clear();
                         });
                       },
-                    )
+                    ),
                   ],
                 ),
 
@@ -370,9 +383,9 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                     itemBuilder: (context, index) {
                       final booking = _searchResults[index];
                       return ListTile(
-                        title: Text(booking['vehicleRego'] ?? ''),
+                        title: Text('Rego: ${booking['rego']}'),
                         subtitle: Text(
-                            'Make: ${booking['make']}, Model: ${booking['model']}'),
+                            'Make: ${booking['make']} | Model: ${booking['model']}'),
                         onTap: () => _selectSearchResult(booking),
                       );
                     },

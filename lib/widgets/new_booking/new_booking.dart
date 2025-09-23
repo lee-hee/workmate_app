@@ -47,7 +47,7 @@ class _NewBookingState extends State<NewBooking> {
 
   Future<void> _createCustomer() async {
     final url = BackendConfig.getUri('v1/customer');
-    await http.post(
+    final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
@@ -56,39 +56,46 @@ class _NewBookingState extends State<NewBooking> {
         'phone': _enteredPhoneNumber,
       }),
     );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create customer');
+    }
   }
 
   Future<void> _createServiceVehicle() async {
     final url = BackendConfig.getUri('v1/vehicle');
-    await http.post(
+    final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'rego': _enteredRego,
         'make': _enteredMake,
         'model': _enteredModel,
+        'registeredDateTime': DateTime.now().toIso8601String(),
       }),
     );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create vehicle');
+    }
   }
 
-  Future<String?> _createBooking() async {
-    final url = BackendConfig.getUri('v1/booking');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'customerPhone': _enteredPhoneNumber,
-        'rego': _enteredRego,
-        // backend will take current time, so no bookingDateTime
-      }),
-    );
-    if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
-      // if backend returns single BookingDto
-      return decoded['bookingReferenceNumber'];
-    }
-    return null;
-  }
+  // Future<String?> _createBooking() async {
+  //   final url = BackendConfig.getUri('v1/booking');
+  //   final response = await http.post(
+  //     url,
+  //     headers: {'Content-Type': 'application/json'},
+  //     body: json.encode({
+  //       'customerPhone': _enteredPhoneNumber,
+  //       'rego': _enteredRego,
+  //       // backend will take current time, so no bookingDateTime
+  //     }),
+  //   );
+  //   if (response.statusCode == 200) {
+  //     final decoded = json.decode(response.body);
+  //     // if backend returns single BookingDto
+  //     return decoded['bookingReferenceNumber'];
+  //   }
+  //   return null;
+  // }
 
   @override
   void dispose() {
@@ -99,7 +106,7 @@ class _NewBookingState extends State<NewBooking> {
   }
 
   // After successful booking, show dialog with countdown
-  void _showSuccessDialog(String rego, String bookingRef) {
+  void _showSuccessDialog(String rego) {
     int countdown = 15;
     Timer? timer;
 
@@ -112,11 +119,13 @@ class _NewBookingState extends State<NewBooking> {
             timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
               if (countdown == 0) {
                 t.cancel();
-                // Navigator.of(context).pop();
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ServiceItemScreen(bookingRef: bookingRef),
+                    builder: (_) => ServiceItemScreen(
+                      customerPhone: _enteredPhoneNumber,
+                      rego: _enteredRego,
+                    ),
                   ),
                 );
               } else {
@@ -141,8 +150,8 @@ class _NewBookingState extends State<NewBooking> {
                 children: [
                   const SizedBox(height: 12),
                   Text(
-                    'Vehicle $_enteredRego registered successfully! Ref: $bookingRef.\n\n'
-                    "To add service items for $rego, auto navigating to service page in $countdown seconds...",
+                    'Vehicle $_enteredRego registered successfully!\n\n'
+                    'To add service items for $_enteredRego, auto navigating to service page in $countdown seconds...',
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                 ],
@@ -154,8 +163,10 @@ class _NewBookingState extends State<NewBooking> {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ServiceItemScreen(bookingRef: bookingRef),
+                        builder: (_) => ServiceItemScreen(
+                          customerPhone: _enteredPhoneNumber,
+                          rego: _enteredRego,
+                        ),
                       ),
                     );
                   },
@@ -165,8 +176,6 @@ class _NewBookingState extends State<NewBooking> {
                   onPressed: () {
                     timer?.cancel();
                     Navigator.of(context).pop();
-
-                    // Navigate to Home page
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                           builder: (_) => const WorkActionHomeScreen()),
@@ -184,11 +193,10 @@ class _NewBookingState extends State<NewBooking> {
 
   // Validate unique rego
   Future<bool> _checkRegoExists(String rego) async {
-    final url = BackendConfig.getUri('v1/booking/check/$rego');
+    final url = BackendConfig.getUri('v1/vehicle/$rego');
     final response = await http.get(url);
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['exists'] == true;
+      return true; // Vehicle exists
     }
     return false;
   }
@@ -227,17 +235,20 @@ class _NewBookingState extends State<NewBooking> {
 
                     if (_vehicleFormKey.currentState!.validate()) {
                       _vehicleFormKey.currentState!.save();
-                      await _createCustomer();
-                      await _createServiceVehicle();
-                      final bookingRef = await _createBooking();
-                      // Show success popup
-                      if (bookingRef != null) {
-                        _showSuccessDialog(_enteredRego, bookingRef);
+                      try {
+                        await _createCustomer();
+                        await _createServiceVehicle();
+                        _showSuccessDialog(_enteredRego);
+                      } catch (e) {
+                        CustomSnackBar.showMessageSnackBar(
+                          context,
+                          'Failed to register vehicle. Please try again.',
+                        );
                       }
                     } else {
                       CustomSnackBar.showMessageSnackBar(
                         context,
-                        'Please complete all vehicle fields before booking.',
+                        'Please complete all vehicle fields.',
                       );
                     }
                   }

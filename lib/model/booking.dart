@@ -1,14 +1,26 @@
-class Booking {
-  const Booking(
-      {required this.bookingTime,
-      required this.bookingReferenceNumber,
-      required this.customerPhone,
-      required this.rego,
-      required this.bookedItems});
+import 'package:json_annotation/json_annotation.dart';
 
-  final String bookingTime;
+part 'booking.g.dart';
+
+@JsonSerializable()
+class Booking {
+  const Booking({
+    required this.id,
+    required this.customerId,
+    required this.vehicleId,
+    required this.bookingDateTime,
+    required this.bookingReferenceNumber,
+    required this.bookingStatus,
+  });
+
+  final int id;
+  final int customerId;
+  final int vehicleId;
+  final String bookingDateTime;
   final String bookingReferenceNumber;
-  final String customerPhone;
-  final String rego;
-  final List<String> bookedItems;
+  final String bookingStatus;
+
+  factory Booking.fromJson(Map<String, dynamic> json) =>
+      _$BookingFromJson(json);
+  Map<String, dynamic> toJson() => _$BookingToJson(this);
 }

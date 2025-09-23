@@ -1,8 +1,429 @@
+// import 'dart:async';
+// import 'dart:convert';
+
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+
+// // Utils
+// import '../../utils/common/custom_snackbar.dart';
+// import '../../utils/responsive_utils/new_bookings/new_booking_util.dart';
+
+// // Config
+// import '../../config/backend_config.dart';
+
+// // Widgets
+// import '../home_view/work_action_home.dart';
+// import '../service_item/service_item_screen.dart';
+
+// class NewBooking extends StatefulWidget {
+//   const NewBooking({super.key});
+
+//   @override
+//   State<NewBooking> createState() {
+//     return _NewBookingState();
+//   }
+// }
+
+// class _NewBookingState extends State<NewBooking> {
+//   int _currentStep = 0;
+//   String? _regoError;
+//   bool _isCheckingRego = false;
+//   Timer? _debounce;
+
+//   // Customer fields
+//   final _customerFormKey = GlobalKey<FormState>();
+//   var _enteredFirstName = '';
+//   var _enteredLastName = '';
+//   var _enteredPhoneNumber = '';
+
+//   // Vehicle fields
+//   final _vehicleFormKey = GlobalKey<FormState>();
+//   var _enteredRego = '';
+//   var _enteredMake = '';
+//   var _enteredModel = '';
+
+//   final vehicleMakeController = TextEditingController();
+//   final vehicleModelController = TextEditingController();
+
+//   Future<void> _createCustomer() async {
+//     final url = BackendConfig.getUri('v1/customer');
+//     await http.post(
+//       url,
+//       headers: {'Content-Type': 'application/json'},
+//       body: json.encode({
+//         'firstName': _enteredFirstName,
+//         'lastName': _enteredLastName,
+//         'phone': _enteredPhoneNumber,
+//       }),
+//     );
+//   }
+
+//   Future<void> _createServiceVehicle() async {
+//     final url = BackendConfig.getUri('v1/vehicle');
+//     await http.post(
+//       url,
+//       headers: {'Content-Type': 'application/json'},
+//       body: json.encode({
+//         'rego': _enteredRego,
+//         'make': _enteredMake,
+//         'model': _enteredModel,
+//       }),
+//     );
+//   }
+
+//   Future<String?> _createBooking() async {
+//     final url = BackendConfig.getUri('v1/booking');
+//     final response = await http.post(
+//       url,
+//       headers: {'Content-Type': 'application/json'},
+//       body: json.encode({
+//         'customerPhone': _enteredPhoneNumber,
+//         'rego': _enteredRego,
+//         // backend will take current time, so no bookingDateTime
+//       }),
+//     );
+//     if (response.statusCode == 200) {
+//       final decoded = json.decode(response.body);
+//       // if backend returns single BookingDto
+//       return decoded['bookingReferenceNumber'];
+//     }
+//     return null;
+//   }
+
+//   @override
+//   void dispose() {
+//     vehicleMakeController.dispose();
+//     vehicleModelController.dispose();
+//     _debounce?.cancel();
+//     super.dispose();
+//   }
+
+//   // After successful booking, show dialog with countdown
+//   void _showSuccessDialog(String rego, String bookingRef) {
+//     int countdown = 15;
+//     Timer? timer;
+
+//     showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder: (context) {
+//         return StatefulBuilder(
+//           builder: (context, setState) {
+//             timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
+//               if (countdown == 0) {
+//                 t.cancel();
+//                 // Navigator.of(context).pop();
+//                 Navigator.pushReplacement(
+//                   context,
+//                   MaterialPageRoute(
+//                     builder: (_) => ServiceItemScreen(bookingRef: bookingRef),
+//                   ),
+//                 );
+//               } else {
+//                 setState(() => countdown--);
+//               }
+//             });
+
+//             return AlertDialog(
+//               shape: RoundedRectangleBorder(
+//                 borderRadius: BorderRadius.circular(16),
+//               ),
+//               title: const Row(
+//                 children: [
+//                   Icon(Icons.check_circle, color: Colors.green),
+//                   SizedBox(width: 8),
+//                   Text("Registration Done!"),
+//                 ],
+//               ),
+//               content: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   const SizedBox(height: 12),
+//                   Text(
+//                     'Vehicle $_enteredRego registered successfully! Ref: $bookingRef.\n\n'
+//                     "To add service items for $rego, auto navigating to service page in $countdown seconds...",
+//                     style: TextStyle(color: Colors.grey[700]),
+//                   ),
+//                 ],
+//               ),
+//               actions: [
+//                 TextButton(
+//                   onPressed: () {
+//                     timer?.cancel();
+//                     Navigator.of(context).pop();
+//                     Navigator.of(context).push(
+//                       MaterialPageRoute(
+//                         builder: (_) =>
+//                             ServiceItemScreen(bookingRef: bookingRef),
+//                       ),
+//                     );
+//                   },
+//                   child: const Text("Continue"),
+//                 ),
+//                 TextButton(
+//                   onPressed: () {
+//                     timer?.cancel();
+//                     Navigator.of(context).pop();
+
+//                     // Navigate to Home page
+//                     Navigator.of(context).pushReplacement(
+//                       MaterialPageRoute(
+//                           builder: (_) => const WorkActionHomeScreen()),
+//                     );
+//                   },
+//                   child: const Text("Cancel"),
+//                 ),
+//               ],
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+
+//   // Validate unique rego
+//   Future<bool> _checkRegoExists(String rego) async {
+//     final url = BackendConfig.getUri('v1/booking/check/$rego');
+//     final response = await http.get(url);
+//     if (response.statusCode == 200) {
+//       final data = json.decode(response.body);
+//       return data['exists'] == true;
+//     }
+//     return false;
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: const Text('Register a New Vehicle')),
+//       body: SafeArea(
+//         child: SingleChildScrollView(
+//           child: Center(
+//             child: Container(
+//               width: ResponsiveFormUtils.getMaxFormWidth(context),
+//               padding: ResponsiveFormUtils.getFormPadding(context),
+//               child: Stepper(
+//                 currentStep: _currentStep,
+//                 onStepContinue: () async {
+//                   if (_currentStep == 0) {
+//                     if (_customerFormKey.currentState!.validate()) {
+//                       _customerFormKey.currentState!.save();
+//                       setState(() => _currentStep += 1);
+//                     } else {
+//                       CustomSnackBar.showMessageSnackBar(
+//                         context,
+//                         'Please complete all customer fields.',
+//                       );
+//                     }
+//                   } else if (_currentStep == 1) {
+//                     if (_regoError != null) {
+//                       CustomSnackBar.showMessageSnackBar(
+//                         context,
+//                         _regoError!,
+//                       );
+//                       return; // Stop further submission
+//                     }
+
+//                     if (_vehicleFormKey.currentState!.validate()) {
+//                       _vehicleFormKey.currentState!.save();
+//                       await _createCustomer();
+//                       await _createServiceVehicle();
+//                       final bookingRef = await _createBooking();
+//                       // Show success popup
+//                       if (bookingRef != null) {
+//                         _showSuccessDialog(_enteredRego, bookingRef);
+//                       }
+//                     } else {
+//                       CustomSnackBar.showMessageSnackBar(
+//                         context,
+//                         'Please complete all vehicle fields before booking.',
+//                       );
+//                     }
+//                   }
+//                 },
+//                 onStepCancel: () {
+//                   if (_currentStep > 0) setState(() => _currentStep -= 1);
+//                 },
+//                 controlsBuilder: (context, details) {
+//                   return Row(
+//                     children: [
+//                       ElevatedButton(
+//                         onPressed: details.onStepContinue,
+//                         child: Text(_currentStep == 1 ? 'Submit' : 'Continue'),
+//                       ),
+//                       const SizedBox(width: 8),
+//                       if (_currentStep > 0)
+//                         TextButton(
+//                           onPressed: details.onStepCancel,
+//                           child: const Text('Back'),
+//                         ),
+//                     ],
+//                   );
+//                 },
+//                 steps: [
+//                   Step(
+//                     title: const Text('Customer'),
+//                     content: Form(
+//                       key: _customerFormKey,
+//                       child: Column(
+//                         children: [
+//                           TextFormField(
+//                             maxLength: 20,
+//                             decoration: const InputDecoration(
+//                                 label: Text('First name')),
+//                             validator: (value) {
+//                               if (value == null ||
+//                                   value.isEmpty ||
+//                                   value.trim().length <= 1 ||
+//                                   value.trim().length > 20) {
+//                                 return 'Must be between 1 and 20 characters.';
+//                               }
+//                               return null;
+//                             },
+//                             onSaved: (value) => _enteredFirstName = value!,
+//                           ),
+//                           TextFormField(
+//                             maxLength: 20,
+//                             decoration:
+//                                 const InputDecoration(label: Text('Last name')),
+//                             validator: (value) {
+//                               if (value == null ||
+//                                   value.isEmpty ||
+//                                   value.trim().length <= 1 ||
+//                                   value.trim().length > 20) {
+//                                 return 'Must be between 1 and 20 characters.';
+//                               }
+//                               return null;
+//                             },
+//                             onSaved: (value) => _enteredLastName = value!,
+//                           ),
+//                           TextFormField(
+//                             maxLength: 15,
+//                             decoration:
+//                                 const InputDecoration(label: Text('Phone')),
+//                             validator: (value) {
+//                               if (value == null ||
+//                                   value.isEmpty ||
+//                                   value.trim().length <= 1 ||
+//                                   value.trim().length > 15) {
+//                                 return 'Must be between 1 and 15 characters.';
+//                               }
+//                               return null;
+//                             },
+//                             onSaved: (value) => _enteredPhoneNumber = value!,
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                     isActive: _currentStep >= 0,
+//                   ),
+//                   Step(
+//                     title: const Text('Vehicle'),
+//                     content: Form(
+//                       key: _vehicleFormKey,
+//                       child: Column(
+//                         children: [
+//                           TextFormField(
+//                             maxLength: 6,
+//                             decoration: InputDecoration(
+//                               label: const Text('Rego'),
+//                               errorText: _regoError,
+//                             ),
+//                             validator: (value) {
+//                               if (value == null ||
+//                                   value.isEmpty ||
+//                                   !RegExp(r'^[a-zA-Z0-9]{6}$')
+//                                       .hasMatch(value)) {
+//                                 return 'Rego must be 6 characters';
+//                               }
+//                               if (_regoError != null) {
+//                                 return _regoError; // show error if already exists
+//                               }
+//                               return null;
+//                             },
+//                             onChanged: (value) {
+//                               if (_debounce?.isActive ?? false) {
+//                                 _debounce!.cancel();
+//                               }
+//                               _debounce = Timer(
+//                                   const Duration(milliseconds: 300), () async {
+//                                 if (value.length == 6) {
+//                                   setState(() {
+//                                     _isCheckingRego = true;
+//                                     _regoError = null;
+//                                   });
+
+//                                   final exists = await _checkRegoExists(value);
+//                                   setState(() {
+//                                     _isCheckingRego = false;
+//                                     _regoError = exists
+//                                         ? 'This vehicle is already registered'
+//                                         : null;
+//                                   });
+//                                 }
+//                               });
+//                             },
+//                             onSaved: (value) => _enteredRego = value!,
+//                           ),
+//                           TextFormField(
+//                             maxLength: 15,
+//                             controller: vehicleMakeController,
+//                             decoration:
+//                                 const InputDecoration(label: Text('Make')),
+//                             validator: (value) {
+//                               if (value == null ||
+//                                   value.isEmpty ||
+//                                   value.trim().length <= 1 ||
+//                                   value.trim().length > 15) {
+//                                 return 'Make can only contain letters.';
+//                               }
+//                               return null;
+//                             },
+//                             onSaved: (value) => _enteredMake = value!,
+//                           ),
+//                           TextFormField(
+//                             maxLength: 15,
+//                             controller: vehicleModelController,
+//                             decoration:
+//                                 const InputDecoration(label: Text('Model')),
+//                             validator: (value) {
+//                               if (value == null || value.isEmpty) {
+//                                 return 'Model is required';
+//                               }
+//                               if (value.trim().length < 2 ||
+//                                   value.trim().length > 15) {
+//                                 return 'Model must be 2-15 characters';
+//                               }
+//                               if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+//                                 return 'Model can only contain letters and numbers';
+//                               }
+//                               return null;
+//                             },
+//                             onSaved: (value) => _enteredModel = value!,
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                     isActive: _currentStep >= 1,
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
+// Models
 
 // Utils
 import '../../utils/common/custom_snackbar.dart';
@@ -35,19 +456,22 @@ class _NewBookingState extends State<NewBooking> {
   var _enteredFirstName = '';
   var _enteredLastName = '';
   var _enteredPhoneNumber = '';
+  int? _customerId;
 
   // Vehicle fields
   final _vehicleFormKey = GlobalKey<FormState>();
   var _enteredRego = '';
   var _enteredMake = '';
   var _enteredModel = '';
+  int? _vehicleId;
+  bool _isVehicleRegistered = false;
 
   final vehicleMakeController = TextEditingController();
   final vehicleModelController = TextEditingController();
 
   Future<void> _createCustomer() async {
     final url = BackendConfig.getUri('v1/customer');
-    await http.post(
+    final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
@@ -56,19 +480,58 @@ class _NewBookingState extends State<NewBooking> {
         'phone': _enteredPhoneNumber,
       }),
     );
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      _customerId = decoded['id'];
+    } else {
+      throw Exception('Failed to create customer');
+    }
+  }
+
+  Future<void> _fetchCustomer() async {
+    final url = BackendConfig.getUri('v1/customer/$_enteredPhoneNumber');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      _customerId = decoded['id'];
+    }
   }
 
   Future<void> _createServiceVehicle() async {
     final url = BackendConfig.getUri('v1/vehicle');
-    await http.post(
+    final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'rego': _enteredRego,
         'make': _enteredMake,
         'model': _enteredModel,
+        'customerId': _customerId,
       }),
     );
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      _vehicleId = decoded['id'];
+      _isVehicleRegistered = true;
+    } else {
+      throw Exception('Failed to create vehicle');
+    }
+  }
+
+  Future<void> _fetchServiceVehicle(String rego) async {
+    final url = BackendConfig.getUri('v1/vehicle/$rego');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      _vehicleId = decoded['id'];
+      _enteredMake = decoded['make'];
+      _enteredModel = decoded['model'];
+      vehicleMakeController.text = _enteredMake;
+      vehicleModelController.text = _enteredModel;
+      _isVehicleRegistered = true;
+    } else {
+      _isVehicleRegistered = false;
+    }
   }
 
   Future<String?> _createBooking() async {
@@ -77,17 +540,33 @@ class _NewBookingState extends State<NewBooking> {
       url,
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
-        'customerPhone': _enteredPhoneNumber,
-        'rego': _enteredRego,
-        // backend will take current time, so no bookingDateTime
+        'customerId': _customerId,
+        'vehicleId': _vehicleId,
       }),
     );
     if (response.statusCode == 200) {
       final decoded = json.decode(response.body);
-      // if backend returns single BookingDto
       return decoded['bookingReferenceNumber'];
     }
     return null;
+  }
+
+  Future<void> _deleteBooking(String bookingRef) async {
+    final url = BackendConfig.getUri('v1/booking/$bookingRef');
+    final response = await http.delete(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete booking');
+    }
+  }
+
+  Future<bool> _checkRegoExists(String rego) async {
+    final url = BackendConfig.getUri('v1/vehicle/check/$rego');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['exists'] == true;
+    }
+    return false;
   }
 
   @override
@@ -98,7 +577,6 @@ class _NewBookingState extends State<NewBooking> {
     super.dispose();
   }
 
-  // After successful booking, show dialog with countdown
   void _showSuccessDialog(String rego, String bookingRef) {
     int countdown = 15;
     Timer? timer;
@@ -112,7 +590,6 @@ class _NewBookingState extends State<NewBooking> {
             timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
               if (countdown == 0) {
                 t.cancel();
-                // Navigator.of(context).pop();
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -141,8 +618,8 @@ class _NewBookingState extends State<NewBooking> {
                 children: [
                   const SizedBox(height: 12),
                   Text(
-                    'Vehicle $_enteredRego registered successfully! Ref: $bookingRef.\n\n'
-                    "To add service items for $rego, auto navigating to service page in $countdown seconds...",
+                    'Vehicle $rego ${_isVehicleRegistered ? "is already registered" : "registered successfully"}! Ref: $bookingRef.\n\n'
+                    'To add service items for $rego, auto navigating to service page in $countdown seconds...',
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                 ],
@@ -162,15 +639,27 @@ class _NewBookingState extends State<NewBooking> {
                   child: const Text("Continue"),
                 ),
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
                     timer?.cancel();
-                    Navigator.of(context).pop();
-
-                    // Navigate to Home page
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                          builder: (_) => const WorkActionHomeScreen()),
-                    );
+                    try {
+                      await _deleteBooking(bookingRef);
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const WorkActionHomeScreen(),
+                        ),
+                      );
+                      CustomSnackBar.showMessageSnackBar(
+                        context,
+                        'Booking $bookingRef cancelled successfully.',
+                      );
+                    } catch (e) {
+                      Navigator.of(context).pop();
+                      CustomSnackBar.showMessageSnackBar(
+                        context,
+                        'Failed to cancel booking: $e',
+                      );
+                    }
                   },
                   child: const Text("Cancel"),
                 ),
@@ -180,17 +669,6 @@ class _NewBookingState extends State<NewBooking> {
         );
       },
     );
-  }
-
-  // Validate unique rego
-  Future<bool> _checkRegoExists(String rego) async {
-    final url = BackendConfig.getUri('v1/booking/check/$rego');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['exists'] == true;
-    }
-    return false;
   }
 
   @override
@@ -209,7 +687,18 @@ class _NewBookingState extends State<NewBooking> {
                   if (_currentStep == 0) {
                     if (_customerFormKey.currentState!.validate()) {
                       _customerFormKey.currentState!.save();
-                      setState(() => _currentStep += 1);
+                      try {
+                        await _fetchCustomer();
+                        if (_customerId == null) {
+                          await _createCustomer();
+                        }
+                        setState(() => _currentStep += 1);
+                      } catch (e) {
+                        CustomSnackBar.showMessageSnackBar(
+                          context,
+                          'Failed to create or fetch customer: $e',
+                        );
+                      }
                     } else {
                       CustomSnackBar.showMessageSnackBar(
                         context,
@@ -217,22 +706,28 @@ class _NewBookingState extends State<NewBooking> {
                       );
                     }
                   } else if (_currentStep == 1) {
-                    if (_regoError != null) {
-                      CustomSnackBar.showMessageSnackBar(
-                        context,
-                        _regoError!,
-                      );
-                      return; // Stop further submission
-                    }
-
                     if (_vehicleFormKey.currentState!.validate()) {
                       _vehicleFormKey.currentState!.save();
-                      await _createCustomer();
-                      await _createServiceVehicle();
-                      final bookingRef = await _createBooking();
-                      // Show success popup
-                      if (bookingRef != null) {
-                        _showSuccessDialog(_enteredRego, bookingRef);
+                      try {
+                        if (_isVehicleRegistered) {
+                          await _fetchServiceVehicle(_enteredRego);
+                        } else {
+                          await _createServiceVehicle();
+                        }
+                        final bookingRef = await _createBooking();
+                        if (bookingRef != null) {
+                          _showSuccessDialog(_enteredRego, bookingRef);
+                        } else {
+                          CustomSnackBar.showMessageSnackBar(
+                            context,
+                            'Failed to create booking.',
+                          );
+                        }
+                      } catch (e) {
+                        CustomSnackBar.showMessageSnackBar(
+                          context,
+                          'Failed to create or fetch vehicle or booking: $e',
+                        );
                       }
                     } else {
                       CustomSnackBar.showMessageSnackBar(
@@ -337,10 +832,7 @@ class _NewBookingState extends State<NewBooking> {
                                       .hasMatch(value)) {
                                 return 'Rego must be 6 characters';
                               }
-                              if (_regoError != null) {
-                                return _regoError; // show error if already exists
-                              }
-                              return null;
+                              return null; // Allow submission even if registered
                             },
                             onChanged: (value) {
                               if (_debounce?.isActive ?? false) {
@@ -360,6 +852,7 @@ class _NewBookingState extends State<NewBooking> {
                                     _regoError = exists
                                         ? 'This vehicle is already registered'
                                         : null;
+                                    _isVehicleRegistered = exists;
                                   });
                                 }
                               });

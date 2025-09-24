@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:intl/intl.dart';
 
 // Config
 import '../../config/backend_config.dart';
@@ -10,8 +12,14 @@ import '../../utils/common/custom_snackbar.dart';
 import '../../utils/responsive_utils/service_item/service_item_util.dart';
 
 class ServiceItemScreen extends StatefulWidget {
-  final String? bookingRef;
-  const ServiceItemScreen({super.key, this.bookingRef});
+  final String customerPhone;
+  final String rego;
+
+  const ServiceItemScreen({
+    super.key,
+    required this.customerPhone,
+    required this.rego,
+  });
 
   @override
   State<ServiceItemScreen> createState() {
@@ -21,57 +29,51 @@ class ServiceItemScreen extends StatefulWidget {
 
 class _ServiceItemScreenState extends State<ServiceItemScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _searchController = TextEditingController();
+  final _regoController = TextEditingController();
   final _makeController = TextEditingController();
   final _modelController = TextEditingController();
-  final _serviceNameController = TextEditingController();
-  final _servicePriceController = TextEditingController();
-  final _searchController = TextEditingController();
+  final _serviceSearchController = TextEditingController();
 
-  bool _isSearchingByRego = true; // true: rego, false: phone
+  bool _isSearchingByRego = true;
+  bool _hasOpenBooking = false;
   List<Map<String, dynamic>> _searchResults = [];
-  List<Map<String, dynamic>> _serviceItems = []; // Store multiple service items
-  String? _selectedBookingRef; // Track selected bookingRef
-
-  TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
-  bool _isDurationValid = true;
+  List<Map<String, dynamic>> _serviceItems = []; // Added services
+  List<Map<String, dynamic>> _serviceOffers = []; // Predefined offers
+  Map<String, dynamic>? _selectedServiceOffer;
+  String? _selectedBookingRef;
+  DateTime? _selectedBookingDateTime;
 
   @override
   void initState() {
     super.initState();
-    if (widget.bookingRef != null && widget.bookingRef!.isNotEmpty) {
-      _selectedBookingRef = widget.bookingRef;
-      _fetchBookingByRef(widget.bookingRef!);
-      _fetchServiceItems(widget.bookingRef!);
-    }
-  }
-
-  // Fetch booking details by bookingRef
-  Future<void> _fetchBookingByRef(String bookingRef) async {
-    final url = BackendConfig.getUri('v1/booking/by-ref/$bookingRef');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final bookings = json.decode(response.body) as List;
-        if (bookings.isNotEmpty) {
-          final booking = bookings[0];
-          final rego = booking['rego'] as String;
-          final vehicle = await _fetchVehicleByRego(rego);
+    _regoController.text = widget.rego;
+    if (widget.rego.isNotEmpty) {
+      _fetchVehicleByRego(widget.rego).then((vehicle) {
+        if (vehicle.isNotEmpty) {
           setState(() {
             _makeController.text = vehicle['make'] ?? '';
             _modelController.text = vehicle['model'] ?? '';
-            _selectedBookingRef = bookingRef;
           });
-        } else {
+          _loadServiceOffers(
+              vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
+          _checkOpenBooking(widget.rego);
+        } else if (widget.rego.isNotEmpty) {
           CustomSnackBar.showMessageSnackBar(
-              context, 'Booking not found for ref: $bookingRef');
+              context, 'Vehicle not found: ${widget.rego}');
         }
-      } else {
-        CustomSnackBar.showMessageSnackBar(
-            context, 'Failed to fetch booking: ${response.statusCode}');
-      }
-    } catch (e) {
-      CustomSnackBar.showMessageSnackBar(context, 'Error fetching booking: $e');
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _regoController.dispose();
+    _makeController.dispose();
+    _modelController.dispose();
+    _serviceSearchController.dispose();
+    super.dispose();
   }
 
   // Fetch vehicle details by rego
@@ -89,41 +91,120 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
     }
   }
 
-  // Fetch all booking details (multiple regos) by phone number
-  Future<void> _fetchBookingsByPhone(String phone) async {
-    final url = BackendConfig.getUri('v1/bookings-by-phone/$phone');
+  // Fetch all vehicles by phone number
+  Future<void> _fetchVehiclesByPhone(String phone) async {
+    final url = BackendConfig.getUri('v1/vehicles-by-phone/$phone');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final vehicles = json.decode(response.body) as List;
+        setState(() {
+          _searchResults = vehicles
+              .map((vehicle) => {
+                    'rego': vehicle['rego'],
+                    'make': vehicle['make'] ?? '',
+                    'model': vehicle['model'] ?? '',
+                  })
+              .toList();
+        });
+      } else {
+        CustomSnackBar.showMessageSnackBar(
+            context, 'Failed to fetch vehicles.');
+      }
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Error fetching vehicles: $e');
+    }
+  }
+
+  // Fetch predefined service items by make and model
+  Future<void> _loadServiceOffers(String make, String model) async {
+    final url = BackendConfig.getUri('config/service-offers/$make/$model');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final serviceOffersData = json.decode(response.body) as List;
+        setState(() {
+          _serviceOffers = serviceOffersData
+              .map((item) => {
+                    'id': item['id'],
+                    'serviceName': item['serviceName'],
+                    'servicePrice': item['servicePrice'].toString(),
+                    'serviceDurationMinutes':
+                        item['serviceDurationMinutes'].toString(),
+                    'make': item['make'] ?? '',
+                    'model': item['model'] ?? '',
+                    'shortName': item['shortName'] ?? '',
+                    'description': item['description'] ?? '',
+                  })
+              .toList();
+          if (_serviceOffers.isNotEmpty) {
+            _selectedServiceOffer = _serviceOffers[0];
+          }
+        });
+        // Fallback to general if empty and not already general
+        if (_serviceOffers.isEmpty && make != 'None' && model != 'None') {
+          await _loadServiceOffers('None', 'None');
+        }
+      } else {
+        // If specific fails and not general, try general
+        if (make != 'None' && model != 'None') {
+          await _loadServiceOffers('None', 'None');
+        } else {
+          CustomSnackBar.showMessageSnackBar(
+              context, 'No service offers available');
+        }
+      }
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Error loading service offers: $e');
+      // Fallback on error
+      if (make != 'None' && model != 'None') {
+        await _loadServiceOffers('None', 'None');
+      }
+    }
+  }
+
+  // Check if there is an open booking for the rego
+  Future<void> _checkOpenBooking(String rego) async {
+    final url = BackendConfig.getUri('v1/booking-by-rego/$rego');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final bookings = json.decode(response.body) as List;
-
-        // Map to futures
-        final results = await Future.wait(bookings.map((booking) async {
-          final vehicle = await _fetchVehicleByRego(booking['rego']);
-          return {
-            'bookingRef': booking['bookingReferenceNumber'],
-            'rego': booking['rego'],
-            'make': vehicle['make'] ?? '',
-            'model': vehicle['model'] ?? '',
-          };
-        }));
-
+        final openBooking = bookings.firstWhere(
+            (b) => b['bookingStatus'] == 'BOOKED',
+            orElse: () => null);
+        if (openBooking != null) {
+          setState(() {
+            _hasOpenBooking = true;
+            _selectedBookingRef = openBooking['bookingReferenceNumber'];
+          });
+          await _fetchServiceItems(_selectedBookingRef!);
+        } else {
+          setState(() {
+            _hasOpenBooking = false;
+            _serviceItems = [];
+          });
+        }
+      } else if (response.statusCode == 404) {
         setState(() {
-          _searchResults = results;
+          _hasOpenBooking = false;
+          _serviceItems = [];
         });
       } else {
         CustomSnackBar.showMessageSnackBar(
-            context, 'Failed to fetch bookings.');
+            context, 'Failed to check bookings: ${response.statusCode}');
       }
     } catch (e) {
       CustomSnackBar.showMessageSnackBar(
-          context, 'Error fetching bookings: $e');
+          context, 'Error checking bookings: $e');
     }
   }
 
   // Fetch existing service items for a bookingRef
   Future<void> _fetchServiceItems(String bookingRef) async {
-    final url = BackendConfig.getUri('v1/service-items/$bookingRef');
+    final url = BackendConfig.getUri('v1/booking/$bookingRef/service-items');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -138,6 +219,10 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                   })
               .toList();
         });
+      } else {
+        setState(() {
+          _serviceItems = [];
+        });
       }
     } catch (e) {
       CustomSnackBar.showMessageSnackBar(
@@ -145,113 +230,88 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
     }
   }
 
-  void _pickDuration() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 0, minute: 0),
-      helpText: 'Select Duration (Hh:Mm)',
-      builder: (BuildContext context, Widget? child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDuration = picked;
-        _isDurationValid = true; // Reset validation on successful selection
-      });
+  // Create booking with selected service item ids and date time
+  Future<void> _createBooking() async {
+    if (_hasOpenBooking) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Cannot create new booking: Open booking exists.');
+      return;
     }
-  }
+    if (_serviceItems.isEmpty) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Please add at least one service item.');
+      return;
+    }
+    if (_selectedBookingDateTime == null) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Please select a booking date and time.');
+      return;
+    }
 
-  // Save service item
-  Future<void> _saveServiceItem() async {
-    if (_formKey.currentState!.validate() && _validateDuration()) {
-      if (_selectedBookingRef == null) {
-        CustomSnackBar.showMessageSnackBar(context, 'Please select a vehicle.');
-        return;
-      }
-      _formKey.currentState!.save();
-
-      final serviceName = _serviceNameController.text.trim();
-      final servicePrice =
-          double.tryParse(_servicePriceController.text.trim()) ?? 0.0;
-      final serviceDurationMinutes =
-          (_selectedDuration.hour * 60) + _selectedDuration.minute;
-
-      final serviceItem = {
-        'bookingRef': _selectedBookingRef,
-        'serviceName': serviceName,
-        'servicePrice': servicePrice,
-        'serviceDurationMinutes': serviceDurationMinutes,
-        'make': _makeController.text.trim(),
-        'model': _modelController.text.trim(),
-        'active': true,
-      };
-
-      final url = BackendConfig.getUri('v1/service-item');
-      try {
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode(serviceItem),
-        );
-        if (response.statusCode == 200) {
-          setState(() {
-            _serviceItems.add({
-              'serviceName': serviceName,
-              'servicePrice': servicePrice.toString(),
-              'serviceDurationMinutes': serviceDurationMinutes.toString(),
-            });
-          });
-          _formKey.currentState?.reset();
-          _serviceNameController.clear();
-          _servicePriceController.clear();
-          setState(() {
-            _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
-            _isDurationValid = true;
-          });
-          CustomSnackBar.showSuccess(
-              context, 'Service item added successfully!');
-        } else {
-          CustomSnackBar.showMessageSnackBar(
-              context, 'Failed to save service item: ${response.statusCode}');
-        }
-      } catch (e) {
+    final url = BackendConfig.getUri('v1/booking');
+    final List<int> serviceItemIds =
+        _serviceItems.map((item) => item['id'] as int).toList();
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'customerPhone': widget.customerPhone,
+          'rego': _regoController.text,
+          'bookingDateTime': DateFormat("yyyy-MM-dd'T'HH:mm:ss")
+              .format(_selectedBookingDateTime!),
+          'serviceItemIds': serviceItemIds,
+        }),
+      );
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final bookingRef = decoded['bookingReferenceNumber'];
+        CustomSnackBar.showSuccess(
+            context, 'Booking created successfully! Ref: $bookingRef');
+        // Refresh after create
+        await _checkOpenBooking(_regoController.text);
+        // Navigate or clear form as needed
+        _cancelForm();
+      } else {
         CustomSnackBar.showMessageSnackBar(
-            context, 'Error saving service item: $e');
+            context, 'Failed to create booking: ${response.statusCode}');
       }
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(context, 'Error creating booking: $e');
     }
   }
 
-  bool _validateDuration() {
-    if (_selectedDuration.hour == 0 && _selectedDuration.minute == 0) {
-      setState(() {
-        _isDurationValid = false;
-      });
-      return false;
+  // Add selected service to list
+  void _addServiceItem() {
+    if (_hasOpenBooking) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Cannot add services: Open booking exists.');
+      return;
     }
-    return true;
+    if (_selectedServiceOffer != null) {
+      setState(() {
+        _serviceItems.add(_selectedServiceOffer!);
+        _serviceSearchController.clear();
+        _selectedServiceOffer =
+            _serviceOffers.isNotEmpty ? _serviceOffers[0] : null;
+      });
+    } else {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Please select a service item');
+    }
   }
 
   void _cancelForm() {
     _formKey.currentState?.reset();
     _makeController.clear();
     _modelController.clear();
-    _serviceNameController.clear();
-    _servicePriceController.clear();
+    _serviceSearchController.clear();
     _searchController.clear();
     setState(() {
-      _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
-      _isDurationValid = true;
+      _selectedBookingDateTime = null;
       _searchResults.clear();
       _serviceItems.clear();
-      _selectedBookingRef = widget.bookingRef;
-      if (_selectedBookingRef != null) {
-        _fetchBookingByRef(_selectedBookingRef!);
-        _fetchServiceItems(_selectedBookingRef!);
-      }
+      _hasOpenBooking = false;
     });
     Navigator.of(context).pop();
   }
@@ -268,68 +328,73 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
       _searchResults.clear();
     });
     if (_isSearchingByRego) {
-      final url = BackendConfig.getUri('v1/booking/check/$query');
-      try {
-        final response = await http.get(url);
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          if (data['exists'] == true) {
-            final bookingUrl =
-                BackendConfig.getUri('v1/booking-by-rego/$query');
-            final bookingResponse = await http.get(bookingUrl);
-            if (bookingResponse.statusCode == 200) {
-              final booking = json.decode(bookingResponse.body);
-              final vehicle = await _fetchVehicleByRego(query);
-              setState(() {
-                _makeController.text = vehicle['make'] ?? '';
-                _modelController.text = vehicle['model'] ?? '';
-                _selectedBookingRef = booking['bookingReferenceNumber'];
-                _searchResults.clear();
-              });
-              _fetchServiceItems(_selectedBookingRef!);
-            } else if (bookingResponse.statusCode == 404) {
-              CustomSnackBar.showMessageSnackBar(
-                  context, 'No booking found for rego: $query');
-            } else {
-              CustomSnackBar.showMessageSnackBar(context,
-                  'Failed to fetch booking: ${bookingResponse.statusCode}');
-            }
-          } else {
-            CustomSnackBar.showMessageSnackBar(
-                context, 'Vehicle not registered: $query');
-          }
-        } else {
-          CustomSnackBar.showMessageSnackBar(
-              context, 'Failed to check rego: ${response.statusCode}');
-        }
-      } catch (e) {
-        CustomSnackBar.showMessageSnackBar(context, 'Error searching rego: $e');
+      final vehicle = await _fetchVehicleByRego(query);
+      if (vehicle.isNotEmpty) {
+        setState(() {
+          _regoController.text = query;
+          _makeController.text = vehicle['make'] ?? '';
+          _modelController.text = vehicle['model'] ?? '';
+          _searchResults.clear();
+        });
+        await _loadServiceOffers(
+            vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
+        await _checkOpenBooking(query);
+      } else {
+        CustomSnackBar.showMessageSnackBar(
+            context, 'Vehicle not found: $query');
       }
     } else {
-      await _fetchBookingsByPhone(query);
+      await _fetchVehiclesByPhone(query);
     }
   }
 
-  // Select a booking from search results (for phone search)
-  void _selectSearchResult(Map<String, dynamic> booking) {
+  // Select a vehicle from search results (for phone search)
+  void _selectSearchResult(Map<String, dynamic> vehicle) {
     setState(() {
-      _makeController.text = booking['make'] ?? '';
-      _modelController.text = booking['model'] ?? '';
-      _selectedBookingRef = booking['bookingRef'];
+      _regoController.text = vehicle['rego'] ?? '';
+      _makeController.text = vehicle['make'] ?? '';
+      _modelController.text = vehicle['model'] ?? '';
       _searchResults.clear();
+      _serviceItems.clear();
     });
-    _fetchServiceItems(_selectedBookingRef!);
+    _loadServiceOffers(vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
+    _checkOpenBooking(vehicle['rego']);
+  }
+
+  Future<void> _pickBookingDateTime() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+      );
+      if (pickedTime != null) {
+        setState(() {
+          _selectedBookingDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add a Service Item'),
+        title: const Text('Add Service Items'),
       ),
       body: Align(
-        alignment: ResponsiveServiceItemScreenUtils.getAlignment(
-            context), // Center on web
+        alignment: ResponsiveServiceItemScreenUtils.getAlignment(context),
         child: SizedBox(
           width: ResponsiveServiceItemScreenUtils.getMaxWidth(context),
           child: Padding(
@@ -365,10 +430,8 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                           _isSearchingByRego = value ?? true;
                           _searchResults.clear();
                           _searchController.clear();
-                          _makeController.clear();
-                          _modelController.clear();
-                          _selectedBookingRef = null;
                           _serviceItems.clear();
+                          _hasOpenBooking = false;
                         });
                       },
                     ),
@@ -381,32 +444,17 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                     shrinkWrap: true,
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
-                      final booking = _searchResults[index];
+                      final vehicle = _searchResults[index];
                       return ListTile(
-                        title: Text('Rego: ${booking['rego']}'),
+                        title: Text('Rego: ${vehicle['rego']}'),
                         subtitle: Text(
-                            'Make: ${booking['make']} | Model: ${booking['model']}'),
-                        onTap: () => _selectSearchResult(booking),
+                            'Make: ${vehicle['make']} | Model: ${vehicle['model']}'),
+                        onTap: () => _selectSearchResult(vehicle),
                       );
                     },
                   ),
 
-                // ---------- SERVICE ITEMS ----------
-                if (_serviceItems.isNotEmpty)
-                  ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _serviceItems.length,
-                    itemBuilder: (context, index) {
-                      final item = _serviceItems[index];
-                      return ListTile(
-                        title: Text(item['serviceName']),
-                        subtitle: Text(
-                            'Price: \$${item['servicePrice']} | Duration: ${item['serviceDurationMinutes']} min'),
-                      );
-                    },
-                  ),
-
-                // ---------- SERVICE ITEM FORM ----------
+                // ---------- VEHICLE DETAILS ----------
                 Expanded(
                   child: SingleChildScrollView(
                     child: Form(
@@ -415,97 +463,132 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
                         children: [
                           const SizedBox(height: 16),
                           TextFormField(
-                            maxLength: 15,
+                            controller: _regoController,
+                            decoration:
+                                const InputDecoration(labelText: 'Rego'),
+                            enabled: false,
+                          ),
+                          TextFormField(
                             controller: _makeController,
                             decoration:
                                 const InputDecoration(labelText: 'Make'),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a valid make';
-                              }
-                              return null;
-                            },
-                            enabled: false, // Read-only after prefill
+                            enabled: false,
                           ),
                           TextFormField(
-                            maxLength: 15,
                             controller: _modelController,
                             decoration:
                                 const InputDecoration(labelText: 'Model'),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a valid model';
-                              }
-                              return null;
-                            },
-                            enabled: false, // Read-only after prefill
+                            enabled: false,
                           ),
-                          TextFormField(
-                            controller: _serviceNameController,
-                            decoration:
-                                const InputDecoration(labelText: 'Service'),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a valid Service';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _servicePriceController,
-                            decoration:
-                                const InputDecoration(labelText: 'Price (\$)'),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null ||
-                                  value.isEmpty ||
-                                  double.tryParse(value) == null) {
-                                return 'Please enter a valid Price';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          GestureDetector(
-                            onTap: _pickDuration,
-                            child: InputDecorator(
-                              decoration: InputDecoration(
-                                labelText: 'Duration (Hh:Mm)',
-                                border: const OutlineInputBorder(),
-                                errorText: _isDurationValid
-                                    ? null
-                                    : 'Duration cannot be empty',
-                              ),
+                          if (_hasOpenBooking)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
                               child: Text(
-                                '${_selectedDuration.hour.toString().padLeft(2, '0')}h:${_selectedDuration.minute.toString().padLeft(2, '0')}m',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium!
-                                      .color,
+                                'Open booking exists. Cannot add new services until completed or cancelled.',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          if (!_hasOpenBooking) ...[
+                            const SizedBox(height: 16),
+                            // ---------- SERVICE SELECTION ----------
+                            TypeAheadField<Map<String, dynamic>>(
+                              textFieldConfiguration: TextFieldConfiguration(
+                                controller: _serviceSearchController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Search Service',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              suggestionsCallback: (pattern) async {
+                                if (pattern.isEmpty) return _serviceOffers;
+                                return _serviceOffers
+                                    .where((offer) => offer['serviceName']
+                                        .toLowerCase()
+                                        .contains(pattern.toLowerCase()))
+                                    .toList();
+                              },
+                              itemBuilder: (context, suggestion) {
+                                return ListTile(
+                                  title: Text(suggestion['serviceName']),
+                                );
+                              },
+                              onSuggestionSelected: (suggestion) {
+                                setState(() {
+                                  _selectedServiceOffer = suggestion;
+                                  _serviceSearchController.text =
+                                      suggestion['serviceName'];
+                                });
+                              },
+                              noItemsFoundBuilder: (context) => const Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text('No services found'),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: _addServiceItem,
+                              child: const Text('Add Service'),
+                            ),
+                          ],
+                          // ---------- ADDED / EXISTING SERVICE ITEMS ----------
+                          if (_serviceItems.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                'Added Service Items:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _serviceItems.length,
+                              itemBuilder: (context, index) {
+                                final item = _serviceItems[index];
+                                return ListTile(
+                                  title: Text(item['serviceName']),
+                                  subtitle: Text(
+                                      'Price: \$${item['servicePrice']} | Duration: ${item['serviceDurationMinutes']} min'),
+                                );
+                              },
+                            ),
+                          ],
+                          if (!_hasOpenBooking) ...[
+                            const SizedBox(height: 16),
+                            // ---------- BOOKING DATE TIME ----------
+                            GestureDetector(
+                              onTap: _pickBookingDateTime,
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Booking Date & Time',
+                                  border: OutlineInputBorder(),
+                                ),
+                                child: Text(
+                                  _selectedBookingDateTime == null
+                                      ? 'Select date and time'
+                                      : DateFormat('yyyy-MM-dd HH:mm')
+                                          .format(_selectedBookingDateTime!),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                           const SizedBox(height: 20),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              ElevatedButton(
-                                onPressed: _saveServiceItem,
-                                style: ElevatedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  backgroundColor:
-                                      const Color.fromARGB(255, 18, 107, 125),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4)),
+                              if (!_hasOpenBooking)
+                                ElevatedButton(
+                                  onPressed: _createBooking,
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    backgroundColor:
+                                        const Color.fromARGB(255, 18, 107, 125),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4)),
+                                  ),
+                                  child: const Text('Create Booking'),
                                 ),
-                                child: const Text('Save'),
-                              ),
                               const SizedBox(width: 8),
                               TextButton(
                                 onPressed: _cancelForm,

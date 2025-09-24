@@ -25,7 +25,8 @@ class WorkActionHomeScreen extends StatelessWidget {
       navigatingWidget = const BookingCalender();
     } else if ('add_service_item' == actionKey) {
       navigatingWidget = const ServiceItemScreen(
-        bookingRef: '',
+        customerPhone: '',
+        rego: '',
       );
     } else {
       navigatingWidget = const FilteredWorkItemScreen();

@@ -35,59 +35,68 @@ class _NewBookingState extends State<NewBooking> {
   var _enteredFirstName = '';
   var _enteredLastName = '';
   var _enteredPhoneNumber = '';
+  var _enteredEmail = '';
 
   // Vehicle fields
   final _vehicleFormKey = GlobalKey<FormState>();
   var _enteredRego = '';
   var _enteredMake = '';
   var _enteredModel = '';
+  var _enteredBodyColor = '';
+  var _enteredVinNumber = '';
 
   final vehicleMakeController = TextEditingController();
   final vehicleModelController = TextEditingController();
 
-  Future<void> _createCustomer() async {
+  Future<Map<String, dynamic>?> _createCustomer() async {
     final url = BackendConfig.getUri('v1/customer');
-    await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'firstName': _enteredFirstName,
-        'lastName': _enteredLastName,
-        'phone': _enteredPhoneNumber,
-      }),
-    );
-  }
-
-  Future<void> _createServiceVehicle() async {
-    final url = BackendConfig.getUri('v1/vehicle');
-    await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'rego': _enteredRego,
-        'make': _enteredMake,
-        'model': _enteredModel,
-      }),
-    );
-  }
-
-  Future<String?> _createBooking() async {
-    final url = BackendConfig.getUri('v1/booking');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'customerPhone': _enteredPhoneNumber,
-        'rego': _enteredRego,
-        // backend will take current time, so no bookingDateTime
-      }),
-    );
-    if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
-      // if backend returns single BookingDto
-      return decoded['bookingReferenceNumber'];
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'firstName': _enteredFirstName,
+          'lastName': _enteredLastName,
+          'phone': _enteredPhoneNumber,
+          'email': _enteredEmail,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        CustomSnackBar.showMessageSnackBar(
+            context, 'Failed to create customer: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Error creating customer: $e');
+      return null;
     }
-    return null;
+  }
+
+  Future<void> _createServiceVehicle(int customerId) async {
+    final url = BackendConfig.getUri('v1/vehicle');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'rego': _enteredRego,
+          'make': _enteredMake,
+          'model': _enteredModel,
+          'bodyColor': _enteredBodyColor,
+          'vinNumber': _enteredVinNumber,
+          'customerId': customerId,
+        }),
+      );
+      if (response.statusCode != 200) {
+        CustomSnackBar.showMessageSnackBar(
+            context, 'Failed to create vehicle: ${response.statusCode}');
+      }
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(context, 'Error creating vehicle: $e');
+    }
   }
 
   @override
@@ -98,8 +107,8 @@ class _NewBookingState extends State<NewBooking> {
     super.dispose();
   }
 
-  // After successful booking, show dialog with countdown
-  void _showSuccessDialog(String rego, String bookingRef) {
+  // After successful registration, show dialog with countdown
+  void _showSuccessDialog(String rego) {
     int countdown = 15;
     Timer? timer;
 
@@ -112,11 +121,14 @@ class _NewBookingState extends State<NewBooking> {
             timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
               if (countdown == 0) {
                 t.cancel();
-                // Navigator.of(context).pop();
+                Navigator.of(context).pop();
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ServiceItemScreen(bookingRef: bookingRef),
+                    builder: (_) => ServiceItemScreen(
+                      customerPhone: _enteredPhoneNumber,
+                      rego: rego,
+                    ),
                   ),
                 );
               } else {
@@ -141,7 +153,7 @@ class _NewBookingState extends State<NewBooking> {
                 children: [
                   const SizedBox(height: 12),
                   Text(
-                    'Vehicle $_enteredRego registered successfully! Ref: $bookingRef.\n\n'
+                    'Vehicle $rego registered successfully!\n\n'
                     "To add service items for $rego, auto navigating to service page in $countdown seconds...",
                     style: TextStyle(color: Colors.grey[700]),
                   ),
@@ -152,10 +164,12 @@ class _NewBookingState extends State<NewBooking> {
                   onPressed: () {
                     timer?.cancel();
                     Navigator.of(context).pop();
-                    Navigator.of(context).push(
+                    Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ServiceItemScreen(bookingRef: bookingRef),
+                        builder: (_) => ServiceItemScreen(
+                          customerPhone: _enteredPhoneNumber,
+                          rego: rego,
+                        ),
                       ),
                     );
                   },
@@ -165,8 +179,6 @@ class _NewBookingState extends State<NewBooking> {
                   onPressed: () {
                     timer?.cancel();
                     Navigator.of(context).pop();
-
-                    // Navigate to Home page
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                           builder: (_) => const WorkActionHomeScreen()),
@@ -182,9 +194,10 @@ class _NewBookingState extends State<NewBooking> {
     );
   }
 
-  // Validate unique rego
+  // Validate unique rego (checks if vehicle exists)
   Future<bool> _checkRegoExists(String rego) async {
-    final url = BackendConfig.getUri('v1/booking/check/$rego');
+    final url = BackendConfig.getUri(
+        'v1/booking/check/$rego'); // Now checks vehicle existence
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -222,22 +235,20 @@ class _NewBookingState extends State<NewBooking> {
                         context,
                         _regoError!,
                       );
-                      return; // Stop further submission
+                      return;
                     }
 
                     if (_vehicleFormKey.currentState!.validate()) {
                       _vehicleFormKey.currentState!.save();
-                      await _createCustomer();
-                      await _createServiceVehicle();
-                      final bookingRef = await _createBooking();
-                      // Show success popup
-                      if (bookingRef != null) {
-                        _showSuccessDialog(_enteredRego, bookingRef);
+                      final customer = await _createCustomer();
+                      if (customer != null) {
+                        await _createServiceVehicle(customer['id']);
+                        _showSuccessDialog(_enteredRego);
                       }
                     } else {
                       CustomSnackBar.showMessageSnackBar(
                         context,
-                        'Please complete all vehicle fields before booking.',
+                        'Please complete all vehicle fields.',
                       );
                     }
                   }
@@ -250,7 +261,8 @@ class _NewBookingState extends State<NewBooking> {
                     children: [
                       ElevatedButton(
                         onPressed: details.onStepContinue,
-                        child: Text(_currentStep == 1 ? 'Submit' : 'Continue'),
+                        child:
+                            Text(_currentStep == 1 ? 'Register' : 'Continue'),
                       ),
                       const SizedBox(width: 8),
                       if (_currentStep > 0)
@@ -299,6 +311,20 @@ class _NewBookingState extends State<NewBooking> {
                             onSaved: (value) => _enteredLastName = value!,
                           ),
                           TextFormField(
+                            maxLength: 50,
+                            decoration:
+                                const InputDecoration(label: Text('Email')),
+                            validator: (value) {
+                              if (value == null ||
+                                  value.isEmpty ||
+                                  !value.contains('@')) {
+                                return 'Please enter a valid email address.';
+                              }
+                              return null;
+                            },
+                            onSaved: (value) => _enteredEmail = value!,
+                          ),
+                          TextFormField(
                             maxLength: 15,
                             decoration:
                                 const InputDecoration(label: Text('Phone')),
@@ -335,10 +361,10 @@ class _NewBookingState extends State<NewBooking> {
                                   value.isEmpty ||
                                   !RegExp(r'^[a-zA-Z0-9]{6}$')
                                       .hasMatch(value)) {
-                                return 'Rego must be 6 characters';
+                                return 'Rego must be 6 alphanumeric characters';
                               }
                               if (_regoError != null) {
-                                return _regoError; // show error if already exists
+                                return _regoError;
                               }
                               return null;
                             },
@@ -376,7 +402,7 @@ class _NewBookingState extends State<NewBooking> {
                                   value.isEmpty ||
                                   value.trim().length <= 1 ||
                                   value.trim().length > 15) {
-                                return 'Make can only contain letters.';
+                                return 'Must be between 1 and 15 characters.';
                               }
                               return null;
                             },
@@ -393,14 +419,40 @@ class _NewBookingState extends State<NewBooking> {
                               }
                               if (value.trim().length < 2 ||
                                   value.trim().length > 15) {
-                                return 'Model must be 2-15 characters';
+                                return 'Must be 2-15 characters';
                               }
                               if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
-                                return 'Model can only contain letters and numbers';
+                                return 'Only letters and numbers';
                               }
                               return null;
                             },
                             onSaved: (value) => _enteredModel = value!,
+                          ),
+                          TextFormField(
+                            maxLength: 20,
+                            decoration: const InputDecoration(
+                                label: Text('Body Color')),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Body color is required';
+                              }
+                              return null;
+                            },
+                            onSaved: (value) => _enteredBodyColor = value!,
+                          ),
+                          TextFormField(
+                            maxLength: 17,
+                            decoration: const InputDecoration(
+                                label: Text('VIN Number')),
+                            validator: (value) {
+                              if (value == null ||
+                                  value.isEmpty ||
+                                  value.length != 17) {
+                                return 'VIN must be 17 characters';
+                              }
+                              return null;
+                            },
+                            onSaved: (value) => _enteredVinNumber = value!,
                           ),
                         ],
                       ),

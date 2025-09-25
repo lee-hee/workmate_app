@@ -27,18 +27,18 @@ class WorkItemJournalListTile extends StatelessWidget {
         if (journalRecord.newCompletionDateTime != null)
           Text('Completion: ${journalRecord.newCompletionDateTime}'),
         if (journalRecord.newCost != null)
-          Text('Cost: \$${journalRecord.newCost}'),
-
-        // If there is a single image
+          Text('Cost: \$${journalRecord.newCost!.toStringAsFixed(2)}'),
         if (journalRecord.imageUrl != null &&
             journalRecord.imageUrl!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Image.network(
-              BackendConfig.getUri('v1/journal-image/${journalRecord.imageUrl}')
+              BackendConfig.getUri('v1/journal-image/${journalRecord.id}')
                   .toString(),
               height: ResponsiveJournalUtils.getImageHeight(context),
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Text('Failed to load image'),
             ),
           ),
         const Divider(color: Colors.black),

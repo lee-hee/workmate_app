@@ -35,6 +35,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
   final _modelController = TextEditingController();
   final _serviceSearchController = TextEditingController();
 
+  String _phone = '';
   bool _isSearchingByRego = true;
   bool _hasOpenBooking = false;
   List<Map<String, dynamic>> _searchResults = [];
@@ -48,13 +49,17 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
   void initState() {
     super.initState();
     _regoController.text = widget.rego;
+    _phone = widget.customerPhone;
     if (widget.rego.isNotEmpty) {
-      _fetchVehicleByRego(widget.rego).then((vehicle) {
+      _fetchVehicleByRego(widget.rego).then((vehicle) async {
         if (vehicle.isNotEmpty) {
           setState(() {
             _makeController.text = vehicle['make'] ?? '';
             _modelController.text = vehicle['model'] ?? '';
           });
+          if (_phone.isEmpty && vehicle['customerId'] != null) {
+            _phone = await _fetchCustomerPhone(vehicle['customerId']);
+          }
           _loadServiceOffers(
               vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
           _checkOpenBooking(widget.rego);
@@ -76,8 +81,28 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
     super.dispose();
   }
 
+  // Fetch customer phone by customerId
+  Future<String> _fetchCustomerPhone(int customerId) async {
+    final url = BackendConfig.getUri('v1/customer/id/$customerId');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final customer = json.decode(response.body);
+        return customer['phone'] ?? '';
+      }
+      return '';
+    } catch (e) {
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Error fetching customer: $e');
+      return '';
+    }
+  }
+
   // Fetch vehicle details by rego
   Future<Map<String, dynamic>> _fetchVehicleByRego(String rego) async {
+    if (rego.isEmpty) {
+      return {};
+    }
     final url = BackendConfig.getUri('v1/vehicle/$rego');
     try {
       final response = await http.get(url);
@@ -109,7 +134,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
         });
       } else {
         CustomSnackBar.showMessageSnackBar(
-            context, 'Failed to fetch vehicles.');
+            context, 'No vehicles found for phone number: $phone');
       }
     } catch (e) {
       CustomSnackBar.showMessageSnackBar(
@@ -167,6 +192,13 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
 
   // Check if there is an open booking for the rego
   Future<void> _checkOpenBooking(String rego) async {
+    if (rego.isEmpty) {
+      setState(() {
+        _hasOpenBooking = false;
+        _serviceItems = [];
+      });
+      return;
+    }
     final url = BackendConfig.getUri('v1/booking-by-rego/$rego');
     try {
       final response = await http.get(url);
@@ -247,6 +279,12 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
           context, 'Please select a booking date and time.');
       return;
     }
+    if (_phone.isEmpty) {
+      // check phone exists
+      CustomSnackBar.showMessageSnackBar(
+          context, 'Customer phone number is missing.');
+      return;
+    }
 
     final url = BackendConfig.getUri('v1/booking');
     final List<int> serviceItemIds =
@@ -256,7 +294,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
         url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'customerPhone': widget.customerPhone,
+          'customerPhone': _phone,
           'rego': _regoController.text,
           'bookingDateTime': DateFormat("yyyy-MM-dd'T'HH:mm:ss")
               .format(_selectedBookingDateTime!),
@@ -336,6 +374,9 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
           _modelController.text = vehicle['model'] ?? '';
           _searchResults.clear();
         });
+        if (vehicle['customerId'] != null) {
+          _phone = await _fetchCustomerPhone(vehicle['customerId']);
+        }
         await _loadServiceOffers(
             vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
         await _checkOpenBooking(query);
@@ -344,6 +385,9 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
             context, 'Vehicle not found: $query');
       }
     } else {
+      setState(() {
+        _phone = query;
+      });
       await _fetchVehiclesByPhone(query);
     }
   }

@@ -63,25 +63,35 @@ class _FilteredWorkItemScreenState extends State<FilteredWorkItemScreen> {
     try {
       final url =
           BackendConfig.getUri('v1/workitem-summary/${selectedUser.id}');
-      print('xxxxxxx$url');
+      print('Fetching work items for user: ${selectedUser.id}');
       final response = await http.get(url);
+      print('GET $url: ${response.statusCode} - ${response.body}');
       if (response.statusCode != 200) {
-        throw Exception('Failed to fetch workitems. Please try again later.');
+        throw Exception(
+            'Failed to fetch work items. Status code: ${response.statusCode}');
       }
       final List workItems = json.decode(response.body);
       List<WorkItem> workItemList = [];
       for (final entry in workItems) {
+        if (entry['id'] == null || entry['id'] <= 0) {
+          print(
+              'Invalid workItemId: ${entry['id']} for service: ${entry['serviceItemDto']?['serviceName']}');
+          continue;
+        }
         workItemList.add(WorkItem(
           id: entry['id'],
-          assignedUserName: entry['userDto']['name'],
-          workItemStatus: entry['workItemStatus'],
-          startedDateTime: entry['startedTime'] ?? 'Not started',
-          serviceName: entry['serviceItemDto']['serviceName'],
-          duration: entry['serviceItemDto']['serviceDurationMinutes'],
-          rego: entry['serviceVehicleDto']['rego'],
-          cost: entry['serviceItemDto']['servicePrice'],
+          assignedUserName: entry['userDto']?['name'] ?? 'Unassigned',
+          workItemStatus: entry['workItemStatus'] ?? 'PENDING',
+          startedDateTime: entry['startedTime'] ?? '',
+          serviceName: entry['serviceItemDto']?['serviceName'] ?? '',
+          duration: entry['serviceItemDto']?['serviceDurationMinutes'] ?? 0,
+          rego: entry['serviceVehicleDto']?['rego'] ?? '',
+          cost: (entry['serviceItemDto']?['servicePrice'] ?? 0.0).toDouble(),
+          uniqueBookingRefIdentifier: entry['uniqueBookingRefIdentifier'] ?? '',
         ));
       }
+      print(
+          'Fetched ${workItemList.length} work items: ${workItemList.map((w) => w.serviceName).toList()}');
       return workItemList;
     } catch (e) {
       print('Error fetching workitems: $e');

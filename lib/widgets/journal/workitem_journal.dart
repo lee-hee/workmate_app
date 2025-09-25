@@ -35,43 +35,59 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
   @override
   void initState() {
     super.initState();
-    fetchJournalRecordsForWorkItem(widget.selectedWorkItem.id).then((onValue) {
-      setState(() {
-        loadedJournalRecords = onValue;
-      });
-    });
+    _fetchJournalRecords();
   }
 
-  Future<List<WorkItemJournalRecord>> fetchJournalRecordsForWorkItem(
-      int workItemId) async {
+  // Fetch journal records for the selected work item
+  Future<void> _fetchJournalRecords() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
-      final url = BackendConfig.getUri('v1/workitem/journal/$workItemId');
-      final response = await http.get(url);
-      print('GET $url: ${response.statusCode} - ${response.body}');
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch workitems. Please try again later.');
-      }
-      final List journalRecords = json.decode(response.body);
-      final journalRecordList = journalRecords
-          .map((entry) => WorkItemJournalRecord(
-                id: entry['journalRecordId'],
-                workItemId: workItemId,
-                newCompletionDateTime: entry['newWorkItemCompletionDate'],
-                newCost: entry['newWorkItemCost']?.toDouble(),
-                note: entry['note'],
-                imageUrl: entry['imageUrl'],
-                journalType: entry['workItemJournalType'],
-              ))
-          .toList();
-      print('Parsed ${journalRecordList.length} journal records');
-      return journalRecordList;
+      final records =
+          await fetchJournalRecordsForWorkItem(widget.selectedWorkItem.id);
+      setState(() {
+        loadedJournalRecords = records;
+        _isLoading = false;
+      });
     } catch (e) {
-      print('Error fetching journal records: $e');
       setState(() {
         _isLoading = false;
       });
-      return [];
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching journal records: $e')),
+        );
+      }
     }
+  }
+
+  // Fetch journal records from backend
+  Future<List<WorkItemJournalRecord>> fetchJournalRecordsForWorkItem(
+      int workItemId) async {
+    final url = BackendConfig.getUri('v1/workitem/journal/$workItemId');
+    print('Fetching journal records for workItemId: $workItemId');
+    final response = await http.get(url);
+    print('GET $url: ${response.statusCode} - ${response.body}');
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to fetch journal records. Status code: ${response.statusCode}');
+    }
+    final List journalRecords = json.decode(response.body);
+    final journalRecordList = journalRecords
+        .map((entry) => WorkItemJournalRecord(
+              id: entry['journalRecordId'] ?? 0,
+              workItemId: workItemId,
+              note: entry['note'] ?? '',
+              newCost: entry['newWorkItemCost']?.toDouble(),
+              newCompletionDateTime:
+                  entry['newWorkItemCompletionDate'] as String?,
+              imageUrl: entry['imageUrl'] as String?,
+              journalType: entry['workItemJournalType'] ?? 'COMMENT',
+            ))
+        .toList();
+    print('Parsed ${journalRecordList.length} journal records');
+    return journalRecordList;
   }
 
   // Navigation to add journal entry record
@@ -88,12 +104,7 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
         .then((value) {
       if (value == true) {
         // refresh list after new record added
-        fetchJournalRecordsForWorkItem(widget.selectedWorkItem.id)
-            .then((journalRecords) {
-          setState(() {
-            loadedJournalRecords = journalRecords;
-          });
-        });
+        _fetchJournalRecords();
       }
     });
   }
@@ -101,17 +112,25 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
   // Delete journal record by ID
   Future<void> _deleteJournalRecord(int journalRecordId) async {
     final url = BackendConfig.getUri('v1/workitem/journal/$journalRecordId');
+    print('Deleting journal record: $journalRecordId');
     final response = await http.delete(url);
-
     if (response.statusCode == 200) {
       setState(() {
         loadedJournalRecords.removeWhere((r) => r.id == journalRecordId);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Journal record deleted')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Journal record deleted')),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Delete failed')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Failed to delete journal record: ${response.body}')),
+        );
+      }
     }
   }
 
@@ -119,7 +138,8 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Work Item Journal Records'),
+        title:
+            Text('Journal Records for ${widget.selectedWorkItem.serviceName}'),
       ),
       body: Align(
         alignment: ResponsiveJournalUtils.getAlignment(context),
@@ -131,19 +151,23 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    'Work Item: ${widget.selectedWorkItem.serviceName} (Rego: ${widget.selectedWorkItem.rego})',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : loadedJournalRecords.isEmpty
-                          ? Center(
-                              child: Text(
-                                  'No journal records found: ${widget.selectedWorkItem.id}'))
+                          ? const Center(
+                              child: Text('No journal records found'))
                           : ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: loadedJournalRecords.length,
-                              itemBuilder:
-                                  (BuildContext context, int position) {
-                                final record = loadedJournalRecords[position];
+                              itemBuilder: (context, index) {
+                                final record = loadedJournalRecords[index];
                                 return Card(
                                   margin:
                                       const EdgeInsets.symmetric(vertical: 8.0),

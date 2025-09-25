@@ -1,17 +1,14 @@
-// Modified =>  Instead compare whole AssignableServiceItem objects, only use userId
-
 // Packages
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'dart:convert';
 
 // Models
-import '../../model/assignable_service_item.dart';
 import '../../model/service_item.dart';
 import '../../model/user.dart';
 import '../../model/work_item.dart';
+import '../booking_list/booking_calendar_container.dart';
 
 // Config
 import '../../config/backend_config.dart';
@@ -20,43 +17,79 @@ import '../../config/backend_config.dart';
 import '../../utils/responsive_utils/work_item/work_item_util.dart';
 
 class ServiceItemList extends StatefulWidget {
-  const ServiceItemList(
-      {super.key,
-      required this.serviceOffers,
-      required this.selectableUsers,
-      required this.workItemId,
-      required this.rego, // Rego filtering
-      this.onWorkItemStarted});
+  const ServiceItemList({
+    super.key,
+    required this.serviceOffers,
+    required this.selectableUsers,
+    required this.workItems,
+    required this.workItemId,
+    required this.rego,
+    required this.bookingEntries,
+    this.onWorkItemStarted,
+  });
   final List<ServiceOffer> serviceOffers;
   final List<User> selectableUsers;
+  final List<WorkItem> workItems;
   final int workItemId;
   final String rego;
+  final List<BookingEntry> bookingEntries;
   final Function(int, List<WorkItem>)? onWorkItemStarted;
+
   @override
-  // ignore: library_private_types_in_public_api
   _ServiceItemListState createState() => _ServiceItemListState();
 }
 
 class _ServiceItemListState extends State<ServiceItemList> {
-  List<WorkItem> workItems = []; // Store work items
-  DateTime currentStartTime = DateTime.now(); // For sequential start times
+  List<WorkItem> filteredWorkItems = [];
+  DateTime currentStartTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    // Fetch existing work items on init
-    _fetchWorkItems();
+    _filterWorkItems();
   }
 
-  // Fetch work items from backend
-  Future<void> _fetchWorkItems() async {
-    // Endpoint /v1/workitems for all; filter by booking refs if needed
-    final url = BackendConfig.getUri('v1/workitems');
-    final response = await http.get(url);
+  @override
+  void didUpdateWidget(ServiceItemList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.workItems != widget.workItems ||
+        oldWidget.bookingEntries != widget.bookingEntries) {
+      _filterWorkItems();
+    }
+  }
+
+  void _filterWorkItems() {
+    setState(() {
+      filteredWorkItems = widget.workItems.where((wi) {
+        final matchesRego = wi.rego == widget.rego;
+        final isPending = wi.workItemStatus.toUpperCase() == 'PENDING';
+        final matchesBookingRef = widget.bookingEntries.any((entry) {
+          final match = entry.bookingRef.trim().toUpperCase() ==
+              wi.uniqueBookingRefIdentifier.trim().toUpperCase();
+          if (!match) {
+            print(
+                'BookingRef mismatch: "${entry.bookingRef}" != "${wi.uniqueBookingRefIdentifier}"');
+          }
+          return match;
+        });
+        print(
+            'WorkItem: ${wi.serviceName}, Rego: ${wi.rego}, Status: ${wi.workItemStatus}, BookingRef: ${wi.uniqueBookingRefIdentifier}, Matches: Rego=$matchesRego, Pending=$isPending, BookingRef=$matchesBookingRef');
+        return matchesRego && isPending;
+      }).toList();
+      print(
+          'Filtered workItems in ServiceItemList: ${filteredWorkItems.map((wi) => "${wi.serviceName}: \$${wi.cost}, Rego: ${wi.rego}, BookingRef: ${wi.uniqueBookingRefIdentifier}, Status: ${wi.workItemStatus}").toList()}');
+    });
+  }
+
+  Future<void> _assignUserToWorkItem(int workItemId, int userId) async {
+    final url = BackendConfig.getUri('v1/workitem/$workItemId/assign/$userId');
+    final response = await http.post(url);
     if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      setState(() {
-        workItems = data
+      final urlWorkItems = BackendConfig.getUri('v1/workitems');
+      final responseWorkItems = await http.get(urlWorkItems);
+      if (responseWorkItems.statusCode == 200) {
+        final List data = json.decode(responseWorkItems.body);
+        final updatedWorkItems = data
             .map<WorkItem>((json) => WorkItem(
                   id: json['id'] ?? -1,
                   assignedUserName: json['userDto']?['name'] ?? 'Unassigned',
@@ -66,63 +99,90 @@ class _ServiceItemListState extends State<ServiceItemList> {
                   rego: json['serviceVehicleDto']?['rego'] ?? '',
                   cost: (json['serviceItemDto']?['servicePrice'] ?? 0.0)
                       .toDouble(),
-                  workItemStatus: json['workItemStatus'] ?? 'ASSIGNED',
+                  workItemStatus: json['workItemStatus'] ?? 'PENDING',
                   startedDateTime: json['startTime']?.toString() ?? '',
+                  uniqueBookingRefIdentifier:
+                      json['uniqueBookingRefIdentifier'] ?? '',
                 ))
-            .where((wi) => wi.rego == widget.rego || widget.rego.isEmpty)
-            .toList();
-        print(
-            'Fetched workItems in ServiceItemList: ${workItems.map((wi) => "${wi.serviceName}: \$${wi.cost}, Rego: ${wi.rego}").toList()}');
-      });
-      // Notify parent after fetch
-      widget.onWorkItemStarted?.call(widget.workItemId, workItems);
+            .where((wi) {
+          final matchesRego = wi.rego == widget.rego;
+          final isPending = wi.workItemStatus.toUpperCase() == 'PENDING';
+          final matchesBookingRef = widget.bookingEntries.any((entry) =>
+              entry.bookingRef.trim().toUpperCase() ==
+              wi.uniqueBookingRefIdentifier.trim().toUpperCase());
+          return matchesRego && isPending;
+        }).toList();
+        setState(() {
+          filteredWorkItems = updatedWorkItems;
+        });
+        widget.onWorkItemStarted?.call(workItemId, updatedWorkItems);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('User assigned to work item ID: $workItemId'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        throw Exception(
+            'Failed to fetch updated work items. Status code: ${responseWorkItems.statusCode}');
+      }
     } else {
-      throw Exception('Failed to fetch work items. Please try again later.');
+      throw Exception(
+          'Failed to assign user. Status code: ${response.statusCode}');
     }
   }
 
-  // Create a new work item
-  Future<void> createWorkItem(
-      AssignableServiceItem assignableServiceItem) async {
-    final url = BackendConfig.getUri(
-        'v1/workitem/${assignableServiceItem.bookingRef}/${assignableServiceItem.userId}');
-    final response = await http.post(url, headers: {
-      'Content-Type': 'application/json',
-    });
-    if (response.statusCode == 200) {
-      // Refresh work items
-      await _fetchWorkItems();
-
-      // Notify parent widget
-      widget.onWorkItemStarted
-          ?.call(assignableServiceItem.workItemId, workItems);
-      setState(() {
-        currentStartTime = DateTime.now(); // Reset
-      });
-    } else {
-      throw Exception('Failed to create work item. Please try again later.');
-    }
-  }
-
-  // Start a work item
   Future<void> startWorkItem(int workItemId) async {
     final url = BackendConfig.getUri('v1/workitem/start/$workItemId');
     final response = await http.post(url);
     if (response.statusCode == 200) {
-      await _fetchWorkItems();
-      // Notify parent widget
-      widget.onWorkItemStarted?.call(workItemId, workItems);
-      setState(() {});
+      final urlWorkItems = BackendConfig.getUri('v1/workitems');
+      final responseWorkItems = await http.get(urlWorkItems);
+      if (responseWorkItems.statusCode == 200) {
+        final List data = json.decode(responseWorkItems.body);
+        final updatedWorkItems = data
+            .map<WorkItem>((json) => WorkItem(
+                  id: json['id'] ?? -1,
+                  assignedUserName: json['userDto']?['name'] ?? 'Unassigned',
+                  serviceName: json['serviceItemDto']?['serviceName'] ?? '',
+                  duration:
+                      json['serviceItemDto']?['serviceDurationMinutes'] ?? 0,
+                  rego: json['serviceVehicleDto']?['rego'] ?? '',
+                  cost: (json['serviceItemDto']?['servicePrice'] ?? 0.0)
+                      .toDouble(),
+                  workItemStatus: json['workItemStatus'] ?? 'PENDING',
+                  startedDateTime: json['startTime']?.toString() ?? '',
+                  uniqueBookingRefIdentifier:
+                      json['uniqueBookingRefIdentifier'] ?? '',
+                ))
+            .where((wi) {
+          final matchesRego = wi.rego == widget.rego;
+          final isPending = wi.workItemStatus.toUpperCase() == 'PENDING';
+          final matchesBookingRef = widget.bookingEntries.any((entry) =>
+              entry.bookingRef.trim().toUpperCase() ==
+              wi.uniqueBookingRefIdentifier.trim().toUpperCase());
+          return matchesRego && isPending; // Relaxed for consistency
+        }).toList();
+        setState(() {
+          filteredWorkItems = updatedWorkItems;
+        });
+        widget.onWorkItemStarted?.call(workItemId, updatedWorkItems);
+      } else {
+        throw Exception(
+            'Failed to fetch updated work items. Status code: ${responseWorkItems.statusCode}');
+      }
     } else {
-      throw Exception('Failed to start work item. Please try again later.');
+      throw Exception(
+          'Failed to start work item. Status code: ${response.statusCode}');
     }
   }
 
-  // Calculate start time based on previous items
   DateTime calculateStartTime(int index) {
     DateTime start = currentStartTime;
     final workItemsByRego =
-        workItems.where((wi) => wi.rego == widget.rego).toList();
+        filteredWorkItems.where((wi) => wi.rego == widget.rego).toList();
     for (int i = 0; i < index && i < workItemsByRego.length; i++) {
       final duration = Duration(minutes: workItemsByRego[i].duration);
       start = start.add(duration);
@@ -130,10 +190,9 @@ class _ServiceItemListState extends State<ServiceItemList> {
     return start;
   }
 
-  // Calculate approx pickup time
   DateTime? calculatePickupTime() {
     final workItemsByRego =
-        workItems.where((wi) => wi.rego == widget.rego).toList();
+        filteredWorkItems.where((wi) => wi.rego == widget.rego).toList();
     if (workItemsByRego.isEmpty) return null;
     final lastWorkItem = workItemsByRego.last;
     DateTime end = lastWorkItem.startedDateTime.isNotEmpty
@@ -153,141 +212,82 @@ class _ServiceItemListState extends State<ServiceItemList> {
         margin: ResponsiveWorkItemUtils.getServiceItemListMargin(context),
         padding: ResponsiveWorkItemUtils.getServiceItemListPadding(context),
         decoration: BoxDecoration(
-            border: Border.all(color: const Color.fromARGB(255, 48, 144, 97))),
-        child: ListView.builder(
-          itemCount: widget.serviceOffers.length,
-          // itemBuilder: (ctx, index) => ListTile(
-          //       title: Text(widget.serviceOffers[index].name),
-          //       trailing: getAssignableServiceItems(
-          //           widget.serviceOffers[index], widget.workItemId),
-          //     )),
-
-          // Zebra striping and detailed info
-          itemBuilder: (ctx, index) {
-            final serviceOffer = widget.serviceOffers[index];
-            final workItem = workItems.firstWhere(
-              (wi) =>
-                  wi.serviceName == serviceOffer.name && wi.rego == widget.rego,
-              orElse: () => WorkItem(
-                id: -1,
-                assignedUserName: '',
-                serviceName: serviceOffer.name,
-                duration: 0,
-                rego: widget.rego,
-                cost: 0.0,
-                workItemStatus: 'ASSIGNED',
-                startedDateTime: '',
-              ),
-            );
-            final startTime = workItem.startedDateTime.isNotEmpty
-                ? DateTime.parse(workItem.startedDateTime)
-                : calculateStartTime(index);
-            final endTime = startTime.add(Duration(minutes: workItem.duration));
-            final zebraColor =
-                index % 2 == 0 ? Colors.blue.shade100 : Colors.transparent;
-
-            return Container(
-              color: zebraColor,
-              child: ListTile(
-                // title: Text(serviceOffer.name),
-                leading:
-                    workItem.id != -1 ? workItem.getIconBasedOnStatus() : null,
-                title: Text(
-                  '${workItem.serviceName} - \$${workItem.cost.toStringAsFixed(2)} - Approx: ${DateFormat('HH:mm').format(startTime)} (${workItem.duration}m)',
-                  style: TextStyle(color: workItem.getIconColorBasedOnStatus()),
-                ),
-                subtitle: Text(
-                    'Pickup Approx: ${DateFormat('HH:mm').format(endTime)}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (workItem.id != -1 && workItem.startedDateTime.isEmpty)
-                      IconButton(
-                        icon: const Icon(Icons.play_arrow),
-                        onPressed: () => startWorkItem(workItem.id),
-                      ),
-                    // DropdownButton<AssignableServiceItem>(
-                    //   // value: workItem.assignedUserName.isNotEmpty
-
-                    //   // Assign only if not already assigned and user exists
-                    //   value: workItem.assignedUserName.isNotEmpty &&
-                    //           widget.selectableUsers.any(
-                    //               (u) => u.name == workItem.assignedUserName)
-                    //       ? AssignableServiceItem(
-                    //           bookingRef: serviceOffer.bookingRef,
-                    //           serviceItemId: serviceOffer.id,
-                    //           userId: widget.selectableUsers
-                    //               .firstWhere((u) =>
-                    //                   u.name == workItem.assignedUserName)
-                    //               .id,
-                    //           workItemId: workItem.id,
-                    //         )
-                    //       : null,
-                    //   // onChanged: (value) => createWorkItem(value!),
-                    //   // Disable if assigned
-                    //   onChanged: workItem.id == -1
-                    //       ? (value) => createWorkItem(value!)
-                    //       : null,
-                    //   // Map users to DropdownMenuItems
-                    //   items: widget.selectableUsers.map((user) {
-                    //     return DropdownMenuItem<AssignableServiceItem>(
-                    //       value: AssignableServiceItem(
-                    //         bookingRef: serviceOffer.bookingRef,
-                    //         serviceItemId: serviceOffer.id,
-                    //         userId: user.id,
-                    //         workItemId: workItem.id,
-                    //       ),
-                    //       child: Text(user.name),
-                    //     );
-                    //   }).toList(),
-                    // ),
-
-                    // Instead compare whole AssignableServiceItem objects, only use userId
-                    DropdownButton<int>(
-                      value: workItem.id != -1 &&
-                              widget.selectableUsers.any(
-                                  (u) => u.name == workItem.assignedUserName)
-                          ? widget.selectableUsers
-                              .firstWhere(
-                                  (u) => u.name == workItem.assignedUserName)
-                              .id
-                          : null,
-                      onChanged: (userId) {
-                        if (userId != null) {
-                          createWorkItem(AssignableServiceItem(
-                            bookingRef: serviceOffer.bookingRef,
-                            serviceItemId: serviceOffer.id,
-                            userId: userId,
-                            workItemId: workItem.id,
-                          ));
-                        }
-                      },
-                      items: widget.selectableUsers.map((user) {
-                        return DropdownMenuItem<int>(
-                          value: user.id,
-                          child: Text(user.name),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+          border: Border.all(color: const Color.fromARGB(255, 48, 144, 97)),
         ),
+        child: filteredWorkItems.isEmpty
+            ? const Center(child: Text('No pending work items available'))
+            : ListView.builder(
+                itemCount: filteredWorkItems.length,
+                itemBuilder: (ctx, index) {
+                  final workItem = filteredWorkItems[index];
+                  final startTime = workItem.startedDateTime.isNotEmpty
+                      ? DateTime.parse(workItem.startedDateTime)
+                      : calculateStartTime(index);
+                  final endTime =
+                      startTime.add(Duration(minutes: workItem.duration));
+                  final zebraColor = index % 2 == 0
+                      ? Colors.blue.shade100
+                      : Colors.transparent;
+
+                  return Container(
+                    color: zebraColor,
+                    child: ListTile(
+                      leading: workItem.id != -1
+                          ? workItem.getIconBasedOnStatus()
+                          : null,
+                      title: Text(
+                        '${workItem.serviceName} - \$${workItem.cost.toStringAsFixed(2)} - Approx: ${DateFormat('HH:mm').format(startTime)} (${workItem.duration}m)',
+                        style: TextStyle(
+                            color: workItem.getIconColorBasedOnStatus()),
+                      ),
+                      subtitle: Text(
+                        'Pickup Approx: ${DateFormat('HH:mm').format(endTime)}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (workItem.id != -1 &&
+                              workItem.startedDateTime.isEmpty &&
+                              workItem.workItemStatus.toUpperCase() ==
+                                  'ASSIGNED')
+                            IconButton(
+                              icon: const Icon(Icons.play_arrow),
+                              onPressed: () => startWorkItem(workItem.id),
+                            ),
+                          DropdownButton<int>(
+                            hint: const Text('Select User'),
+                            value: workItem.assignedUserName.isNotEmpty &&
+                                    widget.selectableUsers.any((u) =>
+                                        u.name == workItem.assignedUserName)
+                                ? widget.selectableUsers
+                                    .firstWhere((u) =>
+                                        u.name == workItem.assignedUserName)
+                                    .id
+                                : null,
+                            onChanged: workItem.id != -1 &&
+                                    workItem.workItemStatus.toUpperCase() ==
+                                        'PENDING'
+                                ? (userId) {
+                                    if (userId != null) {
+                                      _assignUserToWorkItem(
+                                          workItem.id, userId);
+                                    }
+                                  }
+                                : null,
+                            items: widget.selectableUsers.map((user) {
+                              return DropdownMenuItem<int>(
+                                value: user.id,
+                                child: Text(user.name),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
     );
-  }
-
-  // void setSlectedUser(String? value) {
-  //   // This is called when the user selects an item.
-  //   setState(() {
-  //     //dropdownValue = value!;
-  //   });
-  // }
-
-  Widget getAssignableServiceItems(ServiceOffer serviceOffer, int workItemId) {
-    // Moved logic to itemBuilder for zebra and details
-    return const SizedBox.shrink(); // Handled in ListTile
   }
 }

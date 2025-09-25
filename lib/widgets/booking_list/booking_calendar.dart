@@ -1,19 +1,12 @@
-// Copyright 2019 Aleksander Woźniak
-// SPDX-License-Identifier: Apache-2.0
-
 // Packages
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-// Models
-import '../../model/booking.dart';
-
 // Widgets
 import '../../widgets/booking_list/booking_item.dart';
 import '../../widgets/booking_list/booking_calendar_container.dart';
-import '../../widgets/new_booking/new_booking.dart';
 
 // Utils
 import '../../utils/responsive_utils/booking_list/calender_list_util.dart';
@@ -77,10 +70,10 @@ class _BookingCalenderState extends State<BookingCalender> {
     ];
   }
 
-  List<BookingSummary> _getEventsForRange(DateTime start, DateTime end) {
-    final days = daysInRange(start, end);
-    return _getEventsForDays(days);
-  }
+  // List<BookingSummary> _getEventsForRange(DateTime start, DateTime end) {
+  //   final days = daysInRange(start, end);
+  //   return _getEventsForDays(days);
+  // }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
@@ -116,19 +109,22 @@ class _BookingCalenderState extends State<BookingCalender> {
     });
   }
 
-  void _addItem() async {
-    final newItem = await Navigator.of(context).push<Booking>(
-      MaterialPageRoute(
-        builder: (ctx) => const NewBooking(),
-      ),
-    );
-  }
+  // void _addItem() async {
+  //   final newItem = await Navigator.of(context).push<Booking>(
+  //     MaterialPageRoute(
+  //       builder: (ctx) => const NewBooking(),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
     Widget content = const Center(child: Text('Searching for bookings .... '));
     if (_isLoading) {
       content = const Center(child: CircularProgressIndicator());
+    } else if (_selectedEvents.value.isEmpty) {
+      content =
+          const Center(child: Text('No bookings found or an error occurred'));
     } else {
       content = ResponsiveBookingListUtils.isWideScreen(context)
           ? Row(
@@ -386,9 +382,12 @@ class _BookingCalenderState extends State<BookingCalender> {
             );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Bookings calender'), actions: [
-        IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
-      ]),
+      appBar: AppBar(
+        title: const Text('Bookings calender'),
+        // actions: [
+        //   IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
+        // ]
+      ),
       body: content,
     );
   }

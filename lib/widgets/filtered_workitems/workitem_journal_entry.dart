@@ -1,14 +1,10 @@
-// To do:
-// 1. add formKey validator => done
-// 2. attach image logic => done
-// 3. Accept only single image => done
-// 4. Pick full DateTime for newWorkItemCompletionDate => done
-// 5. Use full enum for types => done
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:io'
+    show
+        File,
+        Platform; // which is not supported on web caused to upload images from web
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -34,25 +30,14 @@ class JournalFormPage extends StatefulWidget {
 }
 
 class _JournalFormPageState extends State<JournalFormPage> {
-  final _formKey = GlobalKey<FormState>(); // For validation
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _costController = TextEditingController();
   String? _selectedRecordType;
   DateTime? _selectedCompletionDateTime;
-
-  // final List<XFile> _pickedImages = [];
   XFile? _pickedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // final List<String> _recordTypes = [
-  //   'INTERNAL',
-  //   'COMMENT',
-  //   'PRICE ADJUST',
-  //   'TIME ADJUST',
-  //   'EXTERNAL EMAIL ONLY',
-  //   'EXTERNAL SMS ONLY',
-  //   'EXTERNAL SMS AND EMAIL',
-  // ];
   final Map<String, String> _recordTypeMapping = {
     'Internal': 'INTERNAL',
     'Comment': 'COMMENT',
@@ -71,12 +56,12 @@ class _JournalFormPageState extends State<JournalFormPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (pickedDate != null && context.mounted) {
+    if (pickedDate != null && mounted) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.now(),
       );
-      if (pickedTime != null) {
+      if (pickedTime != null && mounted) {
         setState(() {
           _selectedCompletionDateTime = DateTime(
             pickedDate.year,
@@ -95,8 +80,7 @@ class _JournalFormPageState extends State<JournalFormPage> {
       source: ImageSource.camera,
       maxWidth: 800,
     );
-
-    if (image != null) {
+    if (image != null && mounted) {
       setState(() {
         _pickedImage = image;
       });
@@ -109,75 +93,106 @@ class _JournalFormPageState extends State<JournalFormPage> {
     }
 
     final workItemJournalRecordDto = {
-      "note": _detailsController.text,
-      "newWorkItemCost": double.tryParse(_costController.text) ?? 0,
-      "newWorkItemCompletionDate":
+      'note': _detailsController.text,
+      'newWorkItemCost': double.tryParse(_costController.text) ?? 0.0,
+      'newWorkItemCompletionDate':
           _selectedCompletionDateTime?.toIso8601String(),
-      // "workItemJournalType": _selectedRecordType,
-      "workItemJournalType":
-          _recordTypeMapping[_selectedRecordType] ?? 'INTERNAL'
+      'workItemJournalType':
+          _recordTypeMapping[_selectedRecordType] ?? 'COMMENT',
     };
 
     final url =
         BackendConfig.getUri('v1/workitem/journal/${widget.workItemId}');
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: json.encode(workItemJournalRecordDto),
-    );
-
-    // if (response.statusCode == 200) {
-    // Upload image separately
-    // if (_pickedImage != null) {
-    //   final recordId = json.decode(response.body)['journalRecordId'];
-    //   final imgUrl = BackendConfig.getUri('v1/journal-image/$recordId');
-    //   var request = http.MultipartRequest("POST", imgUrl)
-    //     ..files.add(
-    //         await http.MultipartFile.fromPath("file", _pickedImage!.path));
-    //   await request.send();
-    // }
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      int? recordId;
+    print('Submitting journal record: $workItemJournalRecordDto');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(workItemJournalRecordDto),
+      );
+      print('POST $url: ${response.statusCode} - ${response.body}');
 
       // 1️. Try parsing response if body is not empty
-      if (response.body.isNotEmpty) {
-        try {
-          final Map<String, dynamic> responseData = json.decode(response.body);
-          recordId = responseData['journalRecordId'];
-        } catch (e) {
-          debugPrint("Response not JSON or missing id: $e");
-        }
-      }
-
-      // 2️. Fallback: fetch latest record if no id
-      if (recordId == null) {
-        final listUrl =
-            BackendConfig.getUri('v1/workitem/journal/${widget.workItemId}');
-        final listResp = await http.get(listUrl);
-        if (listResp.statusCode == 200 && listResp.body.isNotEmpty) {
-          final List<dynamic> list = json.decode(listResp.body);
-          if (list.isNotEmpty) {
-            recordId = list.last['journalRecordId'];
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        int? recordId;
+        if (response.body.isNotEmpty) {
+          try {
+            final responseData = json.decode(response.body);
+            recordId = responseData['journalRecordId'];
+          } catch (e) {
+            print('Response not JSON or missing id: $e');
           }
         }
-      }
 
-      // 3️. Upload image if available
-      if (_pickedImage != null && recordId != null) {
-        final imgUrl = BackendConfig.getUri('v1/journal-image/$recordId');
-        var request = http.MultipartRequest("POST", imgUrl)
-          ..files.add(
-              await http.MultipartFile.fromPath("file", _pickedImage!.path));
-        await request.send();
-      }
+        // 2️. Fallback: fetch latest record if no id returned
+        if (recordId == null) {
+          final listUrl =
+              BackendConfig.getUri('v1/workitem/journal/${widget.workItemId}');
+          final listResp = await http.get(listUrl);
+          if (listResp.statusCode == 200 && listResp.body.isNotEmpty) {
+            final List<dynamic> list = json.decode(listResp.body);
+            if (list.isNotEmpty) {
+              recordId = list.last['journalRecordId'];
+            }
+          }
+        }
 
-      Navigator.pop(context, true); // Go back and refresh list
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Failed to save journal record: ${response.body}')),
-      );
+        // 3️. Upload image if available
+        if (_pickedImage != null && recordId != null) {
+          final imgUrl = BackendConfig.getUri('v1/journal-image/$recordId');
+          // var request = http.MultipartRequest('POST', imgUrl)
+          //   ..files.add(
+          //       await http.MultipartFile.fromPath('file', _pickedImage!.path));
+          // final imgResponse = await request.send();
+          var request = http.MultipartRequest('POST', imgUrl);
+          if (kIsWeb) {
+            // Web: Use bytes from XFile
+            final bytes = await _pickedImage!.readAsBytes();
+            request.files.add(http.MultipartFile.fromBytes(
+              'fileUpload',
+              bytes,
+              filename: 'image_${recordId}.jpg',
+            ));
+          } else {
+            // Mobile: Use file path
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'fileUpload',
+                _pickedImage!.path,
+                filename: 'image_${recordId}.jpg',
+              ),
+            );
+          }
+          final imgResponse = await request.send();
+          final imgResponseBody = await imgResponse.stream.bytesToString();
+          // print(
+          //     'Image upload to $imgUrl: ${imgResponse.statusCode} - ${await imgResponse.stream.bytesToString()}');
+          // if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
+          //   throw Exception('Failed to upload image');
+          // }
+          print(
+              'Image upload to $imgUrl: ${imgResponse.statusCode} - $imgResponseBody');
+          if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
+            throw Exception('Failed to upload image: $imgResponseBody');
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Journal record added successfully')),
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        throw Exception('Failed to save journal record: ${response.body}');
+      }
+    } catch (e) {
+      print('Error submitting journal record: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 
@@ -229,29 +244,27 @@ class _JournalFormPageState extends State<JournalFormPage> {
         GestureDetector(
           onTap: _pickImage,
           child: Container(
-              height: ResponsiveJournalUtils.getImageHeight(context),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey, width: 1),
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[100],
-              ),
-              // child: _pickedImages.isEmpty
-              child: _pickedImage == null
-                  ? const Center(child: Text('Tap to add photo'))
-                  : (kIsWeb
-                      ? Image.network(
-                          _pickedImage!.path,
-                          height:
-                              ResponsiveJournalUtils.getImageHeight(context),
-                          fit: BoxFit.cover,
-                        )
-                      : Image.file(
-                          File(_pickedImage!.path),
-                          height:
-                              ResponsiveJournalUtils.getImageHeight(context),
-                          fit: BoxFit.cover,
-                        ))),
+            height: ResponsiveJournalUtils.getImageHeight(context),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey, width: 1),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey[100],
+            ),
+            child: _pickedImage == null
+                ? const Center(child: Text('Tap to add photo'))
+                : (kIsWeb
+                    ? Image.network(
+                        _pickedImage!.path,
+                        height: ResponsiveJournalUtils.getImageHeight(context),
+                        fit: BoxFit.cover,
+                      )
+                    : Image.file(
+                        File(_pickedImage!.path),
+                        height: ResponsiveJournalUtils.getImageHeight(context),
+                        fit: BoxFit.cover,
+                      )),
+          ),
         ),
       ],
     );
@@ -280,12 +293,8 @@ class _JournalFormPageState extends State<JournalFormPage> {
         GestureDetector(
           onTap: _pickCompletionDateTime,
           child: InputDecorator(
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              // errorText: _isDurationValid ? null : 'Duration cannot be empty',
-            ),
+            decoration: const InputDecoration(border: OutlineInputBorder()),
             child: Text(
-              // '${_selectedDuration.hour.toString().padLeft(2, '0')}h:${_selectedDuration.minute.toString().padLeft(2, '0')}m',
               _selectedCompletionDateTime?.toString() ?? 'Select date and time',
               style: TextStyle(
                 fontSize: 16,
@@ -318,7 +327,7 @@ class _JournalFormPageState extends State<JournalFormPage> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Work Item Journal Records')),
+      appBar: AppBar(title: const Text('Add Journal Record')),
       body: Align(
         alignment: ResponsiveJournalUtils.getAlignment(context),
         child: SizedBox(

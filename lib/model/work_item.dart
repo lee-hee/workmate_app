@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 class WorkItem {
-  const WorkItem(
-      {required this.id,
-      required this.assignedUserName,
-      required this.serviceName,
-      required this.duration,
-      required this.rego,
-      required this.cost,
-      required this.workItemStatus,
-      required this.startedDateTime});
+  const WorkItem({
+    required this.id,
+    required this.assignedUserName,
+    required this.serviceName,
+    required this.duration,
+    required this.rego,
+    required this.cost,
+    required this.workItemStatus,
+    required this.startedDateTime,
+    required this.uniqueBookingRefIdentifier,
+  });
   final int id;
   final String assignedUserName;
   final String workItemStatus;
@@ -18,6 +20,7 @@ class WorkItem {
   final int duration;
   final String rego;
   final double cost;
+  final String uniqueBookingRefIdentifier;
 
   Icon getIconBasedOnStatus() {
     switch (workItemStatus) {

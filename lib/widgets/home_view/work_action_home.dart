@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:workmate_app/model/app_action.dart';
 
+// Screens
+import '../../screens/new_user/add_new_user.dart';
+import '../../screens/service_item/service_item_register.dart';
+
 // Widgets
 import '../../widgets/filtered_workitems/filtered_workitem.dart';
 import '../../widgets/booking_list/booking_calendar.dart';
@@ -19,17 +23,21 @@ class WorkActionHomeScreen extends StatelessWidget {
 
   void _selectAction(BuildContext context, String actionKey) {
     StatefulWidget navigatingWidget;
-    if ('new_booking' == actionKey) {
+    if ('new_register' == actionKey) {
       navigatingWidget = const NewBooking();
     } else if ('list_booking' == actionKey) {
       navigatingWidget = const BookingCalender();
-    } else if ('add_service_item' == actionKey) {
+    } else if ('new_booking' == actionKey) {
       navigatingWidget = const ServiceItemScreen(
         customerPhone: '',
         rego: '',
       );
-    } else {
+    } else if ('view_work_items' == actionKey) {
       navigatingWidget = const FilteredWorkItemScreen();
+    } else if ('add_service_item' == actionKey) {
+      navigatingWidget = const ServiceItemRegisterScreen();
+    } else {
+      navigatingWidget = const UserRegisterScreen();
     }
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -69,7 +77,7 @@ class WorkActionHomeScreen extends StatelessWidget {
               ),
               children: [
                 WorkActionGridItem(
-                  key: const Key('new_booking'),
+                  key: const Key('new_register'),
                   action: const AppAction(
                       id: '1',
                       title: 'Register New Vehicle',
@@ -88,13 +96,13 @@ class WorkActionHomeScreen extends StatelessWidget {
                       _selectAction(context, 'list_booking');
                     }),
                 WorkActionGridItem(
-                    key: const Key('add_service_item'),
+                    key: const Key('new_booking'),
                     action: const AppAction(
                         id: '3',
-                        title: 'Add New Service Item',
+                        title: 'Vehicle Booking',
                         color: Color.fromARGB(6, 55, 67, 46)),
                     onActionSelected: () {
-                      _selectAction(context, 'add_service_item');
+                      _selectAction(context, 'new_booking');
                     }),
                 WorkActionGridItem(
                   key: const Key('view_work_items'),
@@ -104,6 +112,26 @@ class WorkActionHomeScreen extends StatelessWidget {
                       color: Color.fromARGB(6, 144, 176, 119)),
                   onActionSelected: () {
                     _selectAction(context, 'view_work_items');
+                  },
+                ),
+                WorkActionGridItem(
+                  key: const Key('Add New Service Items'),
+                  action: const AppAction(
+                      id: '5',
+                      title: 'Add New Service Items',
+                      color: Color.fromARGB(6, 144, 176, 119)),
+                  onActionSelected: () {
+                    _selectAction(context, 'add_service_item');
+                  },
+                ),
+                WorkActionGridItem(
+                  key: const Key('Add New User'),
+                  action: const AppAction(
+                      id: '6',
+                      title: 'Add New User',
+                      color: Color.fromARGB(8, 233, 190, 98)),
+                  onActionSelected: () {
+                    _selectAction(context, 'add_new_user');
                   },
                 ),
               ],

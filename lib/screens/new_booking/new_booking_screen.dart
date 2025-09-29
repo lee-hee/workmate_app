@@ -86,6 +86,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     final url = BackendConfig.getUri('v1/customer/id/$customerId');
     try {
       final response = await http.get(url);
+      print('GET $url: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final customer = json.decode(response.body);
         return customer['phone'] ?? '';
@@ -304,12 +305,28 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final bookingRef = decoded['bookingReferenceNumber'];
-        CustomSnackBar.showSuccess(
-            context, 'Booking created successfully! Ref: $bookingRef');
+        // CustomSnackBar.showSuccess(
+        //     context, 'Booking created successfully! Ref: $bookingRef');
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Success'),
+            content: Text('Booking created successfully! Ref: $bookingRef'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _cancelForm(); // Move form clearing and navigation here
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
         // Refresh after create
         await _checkOpenBooking(_regoController.text);
         // Navigate or clear form as needed
-        _cancelForm();
+        // _cancelForm();
       } else {
         CustomSnackBar.showMessageSnackBar(
             context, 'Failed to create booking: ${response.statusCode}');
@@ -328,7 +345,13 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
     if (_selectedServiceOffer != null) {
       setState(() {
-        _serviceItems.add(_selectedServiceOffer!);
+        _serviceItems.add({
+          'id': _selectedServiceOffer!['id'],
+          'serviceName': _selectedServiceOffer!['serviceName'],
+          'servicePrice': _selectedServiceOffer!['servicePrice'],
+          'serviceDurationMinutes':
+              _selectedServiceOffer!['serviceDurationMinutes'],
+        });
         _serviceSearchController.clear();
         _selectedServiceOffer =
             _serviceOffers.isNotEmpty ? _serviceOffers[0] : null;
@@ -337,6 +360,13 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       CustomSnackBar.showMessageSnackBar(
           context, 'Please select a service item');
     }
+  }
+
+  // Remove a service item from the list
+  void _removeServiceItem(int index) {
+    setState(() {
+      _serviceItems.removeAt(index);
+    });
   }
 
   void _cancelForm() {
@@ -435,7 +465,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Booking'),
+        title: const Text('Create a New Booking'),
       ),
       body: Align(
         alignment: ResponsiveServiceItemScreenUtils.getAlignment(context),
@@ -455,9 +485,10 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                           labelText: _isSearchingByRego
                               ? 'Search by Vehicle Rego'
                               : 'Search by Customer Phone',
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.search),
+                          suffixIcon: TextButton(
+                            // icon: const Icon(Icons.search),
                             onPressed: _performSearch,
+                            child: const Text('Search'),
                           ),
                         ),
                       ),
@@ -538,9 +569,24 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                             TypeAheadField<Map<String, dynamic>>(
                               textFieldConfiguration: TextFieldConfiguration(
                                 controller: _serviceSearchController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Search Service',
-                                  border: OutlineInputBorder(),
+                                  border: const OutlineInputBorder(),
+                                  // Add button inside the text field
+                                  suffixIcon: (_selectedServiceOffer != null ||
+                                          _serviceSearchController
+                                              .text.isNotEmpty)
+                                      ? TextButton(
+                                          // icon: const Icon(Icons.add, size: 20),
+                                          onPressed: _addServiceItem,
+                                          child: const Text(
+                                            'Add',
+                                            style: TextStyle(
+                                                color: Colors.teal,
+                                                fontSize: 14),
+                                          ), // Disable if no service selected
+                                        )
+                                      : null,
                                 ),
                               ),
                               suggestionsCallback: (pattern) async {
@@ -554,6 +600,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                               itemBuilder: (context, suggestion) {
                                 return ListTile(
                                   title: Text(suggestion['serviceName']),
+                                  subtitle: Text(
+                                      'Price: \$${suggestion['servicePrice']} | Duration: ${suggestion['serviceDurationMinutes']} min'),
                                 );
                               },
                               onSuggestionSelected: (suggestion) {
@@ -568,23 +616,24 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                                 child: Text('No services found'),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: _addServiceItem,
-                              child: const Text('Add Service'),
-                            ),
+                            // const SizedBox(height: 8),
+                            // ElevatedButton(
+                            //   onPressed: _addServiceItem,
+                            //   child: const Text('Add Service'),
+                            // ),
                           ],
                           // ---------- ADDED / EXISTING SERVICE ITEMS ----------
                           if (_serviceItems.isNotEmpty) ...[
                             const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
+                              padding: EdgeInsets.fromLTRB(16, 8, 0, 8),
                               child: Text(
-                                'Added Service Items:',
+                                'Service Items:',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
                             ListView.builder(
                               shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: _serviceItems.length,
                               itemBuilder: (context, index) {
                                 final item = _serviceItems[index];
@@ -592,6 +641,17 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                                   title: Text(item['serviceName']),
                                   subtitle: Text(
                                       'Price: \$${item['servicePrice']} | Duration: ${item['serviceDurationMinutes']} min'),
+                                  // Service item removal button
+                                  trailing: _hasOpenBooking
+                                      ? null
+                                      : IconButton(
+                                          icon:
+                                              const Icon(Icons.close, size: 20),
+                                          color: Colors.red,
+                                          tooltip: 'Remove Service',
+                                          onPressed: () =>
+                                              _removeServiceItem(index),
+                                        ),
                                 );
                               },
                             ),

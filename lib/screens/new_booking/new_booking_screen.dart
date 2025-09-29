@@ -11,23 +11,23 @@ import '../../config/backend_config.dart';
 import '../../utils/common/custom_snackbar.dart';
 import '../../utils/responsive_utils/service_item/service_item_util.dart';
 
-class ServiceItemScreen extends StatefulWidget {
+class NewBookingScreen extends StatefulWidget {
   final String customerPhone;
   final String rego;
 
-  const ServiceItemScreen({
+  const NewBookingScreen({
     super.key,
     required this.customerPhone,
     required this.rego,
   });
 
   @override
-  State<ServiceItemScreen> createState() {
-    return _ServiceItemScreenState();
+  State<NewBookingScreen> createState() {
+    return _NewBookingScreenState();
   }
 }
 
-class _ServiceItemScreenState extends State<ServiceItemScreen> {
+class _NewBookingScreenState extends State<NewBookingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _searchController = TextEditingController();
   final _regoController = TextEditingController();
@@ -435,7 +435,7 @@ class _ServiceItemScreenState extends State<ServiceItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Service Items'),
+        title: const Text('New Booking'),
       ),
       body: Align(
         alignment: ResponsiveServiceItemScreenUtils.getAlignment(context),

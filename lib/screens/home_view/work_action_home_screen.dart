@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:workmate_app/model/app_action.dart';
 
 // Screens
-import '../../screens/new_user/add_new_user.dart';
-import '../../screens/service_item/service_item_register.dart';
+import '../new_user/add_new_user_screen.dart';
+import '../service_item/service_item_register_screen.dart';
 
 // Widgets
 import '../../widgets/filtered_workitems/filtered_workitem.dart';
 import '../../widgets/booking_list/booking_calendar.dart';
 import '../../widgets/home_view/work_action_grid_item.dart';
-import '../../widgets/new_booking/new_booking.dart';
-import '../../widgets/service_item/service_item_screen.dart';
+
+// Screens
+import '../new_register/new_register_screen.dart';
+import '../new_booking/new_booking_screen.dart';
 
 // Utils
 import '../../utils/responsive_utils/home_view/home_util.dart';
@@ -24,11 +26,11 @@ class WorkActionHomeScreen extends StatelessWidget {
   void _selectAction(BuildContext context, String actionKey) {
     StatefulWidget navigatingWidget;
     if ('new_register' == actionKey) {
-      navigatingWidget = const NewBooking();
+      navigatingWidget = const NewRegisterScreen();
     } else if ('list_booking' == actionKey) {
       navigatingWidget = const BookingCalender();
     } else if ('new_booking' == actionKey) {
-      navigatingWidget = const ServiceItemScreen(
+      navigatingWidget = const NewBookingScreen(
         customerPhone: '',
         rego: '',
       );
@@ -83,7 +85,7 @@ class WorkActionHomeScreen extends StatelessWidget {
                       title: 'Register New Vehicle',
                       color: Color.fromARGB(9, 127, 152, 97)),
                   onActionSelected: () {
-                    _selectAction(context, 'new_booking');
+                    _selectAction(context, 'new_register');
                   },
                 ),
                 WorkActionGridItem(

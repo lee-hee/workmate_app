@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:workmate_app/widgets/home_view/work_action_home.dart';
+import 'package:workmate_app/screens/home_view/work_action_home_screen.dart';
 
 void main() {
   runApp(const WorkMateApp());

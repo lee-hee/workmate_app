@@ -23,6 +23,8 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
   final _modelController = TextEditingController();
   final _serviceNameController = TextEditingController();
   final _servicePriceController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _shortNameController = TextEditingController();
 
   TimeOfDay _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
   bool _isDurationValid = true;
@@ -47,7 +49,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
     }
   }
 
-  void _saveserviceItem() {
+  void _saveServiceItem() {
     if (_formKey.currentState!.validate() && _validateDuration()) {
       _formKey.currentState!.save();
 
@@ -58,6 +60,8 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
           double.tryParse(_servicePriceController.text.trim()) ?? 0.0;
       final serviceDurationMinutes =
           (_selectedDuration.hour * 60) + _selectedDuration.minute;
+      final description = _descriptionController.text.trim();
+      final shortName = _shortNameController.text.trim();
 
       // Use this data as required (e.g., send it to an API or save locally)
       print('Make: $make');
@@ -66,8 +70,15 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
       print('servicePrice: $servicePrice');
       print('Duration: $serviceDurationMinutes');
 
-      void sendserviceNameItems(String make, String model, String serviceName,
-          String servicePrice, String serviceDurationMinutes) async {
+      // Function to send data to the API
+      void sendserviceNameItems(
+          String make,
+          String model,
+          String serviceName,
+          String servicePrice,
+          String serviceDurationMinutes,
+          String description,
+          String shortName) async {
         final url = BackendConfig.getUri('config/service-item');
 
         // Prepare the data to send
@@ -77,6 +88,8 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
           'serviceName': serviceName,
           'servicePrice': servicePrice,
           'serviceDurationMinutes': serviceDurationMinutes,
+          'description': description,
+          'shortName': shortName,
         };
         // Convert the data to JSON format
         final String jsonData = json.encode(data);
@@ -107,7 +120,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
 
       // Send data to the API
       sendserviceNameItems(make, model, serviceName, servicePrice.toString(),
-          serviceDurationMinutes.toString());
+          serviceDurationMinutes.toString(), description, shortName);
 
       // Clear the form after saving
       _formKey.currentState?.reset();
@@ -115,6 +128,8 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
       _modelController.clear();
       _serviceNameController.clear();
       _servicePriceController.clear();
+      _descriptionController.clear();
+      _shortNameController.clear();
       setState(() {
         _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
         _isDurationValid = true;
@@ -142,6 +157,8 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
     _modelController.clear();
     _serviceNameController.clear();
     _servicePriceController.clear();
+    _descriptionController.clear();
+    _shortNameController.clear();
     setState(() {
       _selectedDuration = const TimeOfDay(hour: 0, minute: 0);
       _isDurationValid = true;
@@ -167,6 +184,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
+                    // Make
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: TextFormField(
@@ -181,6 +199,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                         },
                       ),
                     ),
+                    // Model
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: TextFormField(
@@ -198,19 +217,41 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                         },
                       ),
                     ),
+                    // Service Name
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: TextFormField(
                         controller: _serviceNameController,
-                        decoration: const InputDecoration(labelText: 'Service'),
+                        decoration:
+                            const InputDecoration(labelText: 'Service Name'),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter a valid Service';
+                            return 'Please enter a valid Service Name';
                           }
                           return null;
                         },
                       ),
                     ),
+                    // Short Name
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TextFormField(
+                        controller: _shortNameController,
+                        decoration:
+                            const InputDecoration(labelText: 'Short Name'),
+                      ),
+                    ),
+                    // Description
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TextFormField(
+                        controller: _descriptionController,
+                        maxLines: 3,
+                        decoration:
+                            const InputDecoration(labelText: 'Description'),
+                      ),
+                    ),
+                    // Price
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: TextFormField(
@@ -228,6 +269,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                         },
                       ),
                     ),
+                    // Duration
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: GestureDetector(
@@ -252,15 +294,16 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         ElevatedButton(
-                          onPressed: _saveserviceItem,
+                          onPressed: _saveServiceItem,
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            backgroundColor: const Color.fromARGB(
-                                255, 18, 107, 125), // Text color
+                            backgroundColor:
+                                const Color.fromARGB(255, 18, 107, 125),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(
@@ -274,8 +317,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.grey,
                             shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(4)), // Button shape
+                                borderRadius: BorderRadius.circular(4)),
                           ),
                           child: const Text('Cancel'),
                         ),

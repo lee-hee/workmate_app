@@ -12,30 +12,35 @@ import '../../utils/responsive_utils/new_bookings/new_booking_util.dart';
 import '../../config/backend_config.dart';
 
 // Widgets
-import '../home_view/work_action_home.dart';
-import '../service_item/service_item_screen.dart';
+import '../home_view/work_action_home_screen.dart';
+import '../new_booking/new_booking_screen.dart';
 
-class NewBooking extends StatefulWidget {
-  const NewBooking({super.key});
+class NewRegisterScreen extends StatefulWidget {
+  const NewRegisterScreen({super.key});
 
   @override
-  State<NewBooking> createState() {
-    return _NewBookingState();
+  State<NewRegisterScreen> createState() {
+    return _NewRegisterState();
   }
 }
 
-class _NewBookingState extends State<NewBooking> {
+class _NewRegisterState extends State<NewRegisterScreen> {
   int _currentStep = 0;
   String? _regoError;
+  // ignore: unused_field
   bool _isCheckingRego = false;
+  bool _isCheckingPhone = false; // check phone exists
+  String? _phoneExistMessage;
+  bool _isCustomerSelected = false;
+  Map<String, dynamic>? _existingCustomer;
   Timer? _debounce;
 
   // Customer fields
   final _customerFormKey = GlobalKey<FormState>();
-  var _enteredFirstName = '';
-  var _enteredLastName = '';
-  var _enteredPhoneNumber = '';
-  var _enteredEmail = '';
+  final _phoneController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
 
   // Vehicle fields
   final _vehicleFormKey = GlobalKey<FormState>();
@@ -48,17 +53,40 @@ class _NewBookingState extends State<NewBooking> {
   final vehicleMakeController = TextEditingController();
   final vehicleModelController = TextEditingController();
 
+  // Check if customer exists by phone number
+  Future<Map<String, dynamic>?> _checkCustomerExists(String phone) async {
+    final url = BackendConfig.getUri('v1/customer/$phone');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 404) {
+        return null; // Customer not found
+      } else {
+        print('Error checking customer: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Error checking customer: $e');
+      return null;
+    }
+  }
+
+  // Create customer
   Future<Map<String, dynamic>?> _createCustomer() async {
+    if (_isCustomerSelected && _existingCustomer != null) {
+      return _existingCustomer; // Reuse existing customer
+    }
     final url = BackendConfig.getUri('v1/customer');
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'firstName': _enteredFirstName,
-          'lastName': _enteredLastName,
-          'phone': _enteredPhoneNumber,
-          'email': _enteredEmail,
+          'firstName': _firstNameController.text,
+          'lastName': _lastNameController.text,
+          'phone': _phoneController.text,
+          'email': _emailController.text,
         }),
       );
       if (response.statusCode == 200) {
@@ -75,6 +103,7 @@ class _NewBookingState extends State<NewBooking> {
     }
   }
 
+  // Create service vehicle
   Future<void> _createServiceVehicle(int customerId) async {
     final url = BackendConfig.getUri('v1/vehicle');
     try {
@@ -99,15 +128,18 @@ class _NewBookingState extends State<NewBooking> {
     }
   }
 
-  @override
-  void dispose() {
-    vehicleMakeController.dispose();
-    vehicleModelController.dispose();
-    _debounce?.cancel();
-    super.dispose();
+  // Check if vehicle rego exists
+  Future<bool> _checkRegoExists(String rego) async {
+    final url = BackendConfig.getUri('v1/booking/check/$rego');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['exists'] == true;
+    }
+    return false;
   }
 
-  // After successful registration, show dialog with countdown
+  // Show success dialog with countdown
   void _showSuccessDialog(String rego) {
     int countdown = 15;
     Timer? timer;
@@ -125,8 +157,8 @@ class _NewBookingState extends State<NewBooking> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ServiceItemScreen(
-                      customerPhone: _enteredPhoneNumber,
+                    builder: (_) => NewBookingScreen(
+                      customerPhone: _phoneController.text,
                       rego: rego,
                     ),
                   ),
@@ -154,7 +186,7 @@ class _NewBookingState extends State<NewBooking> {
                   const SizedBox(height: 12),
                   Text(
                     'Vehicle $rego registered successfully!\n\n'
-                    "To add service items for $rego, auto navigating to service page in $countdown seconds...",
+                    'To add service items for $rego, auto navigating to service page in $countdown seconds...',
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                 ],
@@ -166,8 +198,8 @@ class _NewBookingState extends State<NewBooking> {
                     Navigator.of(context).pop();
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (_) => ServiceItemScreen(
-                          customerPhone: _enteredPhoneNumber,
+                        builder: (_) => NewBookingScreen(
+                          customerPhone: _phoneController.text,
                           rego: rego,
                         ),
                       ),
@@ -194,16 +226,16 @@ class _NewBookingState extends State<NewBooking> {
     );
   }
 
-  // Validate unique rego (checks if vehicle exists)
-  Future<bool> _checkRegoExists(String rego) async {
-    final url = BackendConfig.getUri(
-        'v1/booking/check/$rego'); // Now checks vehicle existence
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['exists'] == true;
-    }
-    return false;
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    vehicleMakeController.dispose();
+    vehicleModelController.dispose();
+    _debounce?.cancel();
+    super.dispose();
   }
 
   @override
@@ -254,7 +286,17 @@ class _NewBookingState extends State<NewBooking> {
                   }
                 },
                 onStepCancel: () {
-                  if (_currentStep > 0) setState(() => _currentStep -= 1);
+                  if (_currentStep > 0) {
+                    setState(() {
+                      _currentStep -= 1;
+                      _isCustomerSelected = false;
+                      _existingCustomer = null;
+                      _phoneController.clear();
+                      _firstNameController.clear();
+                      _lastNameController.clear();
+                      _emailController.clear();
+                    });
+                  }
                 },
                 controlsBuilder: (context, details) {
                   return Row(
@@ -281,6 +323,97 @@ class _NewBookingState extends State<NewBooking> {
                       child: Column(
                         children: [
                           TextFormField(
+                            controller: _phoneController,
+                            maxLength: 15,
+                            decoration: InputDecoration(
+                              label: const Text('Phone'),
+                              helper: _phoneExistMessage != null
+                                  ? Text(
+                                      _phoneExistMessage!,
+                                      style: const TextStyle(color: Colors.red),
+                                    )
+                                  : null,
+                              counterText: _phoneExistMessage != null
+                                  ? ''
+                                  : null, // Hide counter when message is shown
+                              suffixIcon: _isCheckingPhone
+                                  ? const CircularProgressIndicator()
+                                  : _existingCustomer != null &&
+                                          !_isCustomerSelected
+                                      ? TextButton(
+                                          // icon: const Icon(Icons.add),
+                                          onPressed: () {
+                                            setState(() {
+                                              _isCustomerSelected = true;
+                                              _firstNameController.text =
+                                                  _existingCustomer![
+                                                          'firstName'] ??
+                                                      '';
+                                              _lastNameController.text =
+                                                  _existingCustomer![
+                                                          'lastName'] ??
+                                                      '';
+                                              _emailController.text =
+                                                  _existingCustomer!['email'] ??
+                                                      '';
+                                            });
+                                          },
+                                          child: const Text('Add'),
+                                        )
+                                      : null,
+                            ),
+                            validator: (value) {
+                              if (value == null ||
+                                  value.isEmpty ||
+                                  value.trim().length <= 1 ||
+                                  value.trim().length > 15) {
+                                return 'Must be between 1 and 15 characters.';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              if (_debounce?.isActive ?? false) {
+                                _debounce!.cancel();
+                              }
+                              _debounce = Timer(
+                                  const Duration(milliseconds: 300), () async {
+                                if (value.length >= 1) {
+                                  setState(() {
+                                    _isCheckingPhone = true;
+                                    _existingCustomer = null;
+                                    _isCustomerSelected = false;
+                                    _phoneExistMessage = null;
+                                    // Clear controllers when no customer is selected
+                                    if (!_isCustomerSelected) {
+                                      _firstNameController.clear();
+                                      _lastNameController.clear();
+                                      _emailController.clear();
+                                    }
+                                  });
+                                  final customer =
+                                      await _checkCustomerExists(value);
+                                  setState(() {
+                                    _isCheckingPhone = false;
+                                    _existingCustomer = customer;
+                                    _phoneExistMessage = customer != null
+                                        ? 'Customer already registered. Click Add to use.'
+                                        : null;
+                                  });
+                                } else {
+                                  setState(() {
+                                    _phoneExistMessage = null;
+                                    // Clear controllers when input is too short
+                                    _firstNameController.clear();
+                                    _lastNameController.clear();
+                                    _emailController.clear();
+                                  });
+                                }
+                              });
+                            },
+                            onSaved: (value) => _phoneController.text = value!,
+                          ),
+                          TextFormField(
+                            controller: _firstNameController,
                             maxLength: 20,
                             decoration: const InputDecoration(
                                 label: Text('First name')),
@@ -293,9 +426,12 @@ class _NewBookingState extends State<NewBooking> {
                               }
                               return null;
                             },
-                            onSaved: (value) => _enteredFirstName = value!,
+                            enabled: !_isCustomerSelected,
+                            onSaved: (value) =>
+                                _firstNameController.text = value!,
                           ),
                           TextFormField(
+                            controller: _lastNameController,
                             maxLength: 20,
                             decoration:
                                 const InputDecoration(label: Text('Last name')),
@@ -308,9 +444,12 @@ class _NewBookingState extends State<NewBooking> {
                               }
                               return null;
                             },
-                            onSaved: (value) => _enteredLastName = value!,
+                            enabled: !_isCustomerSelected,
+                            onSaved: (value) =>
+                                _lastNameController.text = value!,
                           ),
                           TextFormField(
+                            controller: _emailController,
                             maxLength: 50,
                             decoration:
                                 const InputDecoration(label: Text('Email')),
@@ -322,22 +461,8 @@ class _NewBookingState extends State<NewBooking> {
                               }
                               return null;
                             },
-                            onSaved: (value) => _enteredEmail = value!,
-                          ),
-                          TextFormField(
-                            maxLength: 15,
-                            decoration:
-                                const InputDecoration(label: Text('Phone')),
-                            validator: (value) {
-                              if (value == null ||
-                                  value.isEmpty ||
-                                  value.trim().length <= 1 ||
-                                  value.trim().length > 15) {
-                                return 'Must be between 1 and 15 characters.';
-                              }
-                              return null;
-                            },
-                            onSaved: (value) => _enteredPhoneNumber = value!,
+                            enabled: !_isCustomerSelected,
+                            onSaved: (value) => _emailController.text = value!,
                           ),
                         ],
                       ),
@@ -379,7 +504,6 @@ class _NewBookingState extends State<NewBooking> {
                                     _isCheckingRego = true;
                                     _regoError = null;
                                   });
-
                                   final exists = await _checkRegoExists(value);
                                   setState(() {
                                     _isCheckingRego = false;

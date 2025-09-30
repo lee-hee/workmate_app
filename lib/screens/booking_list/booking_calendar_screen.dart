@@ -5,21 +5,20 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 // Widgets
-import '../../widgets/booking_list/booking_item.dart';
+import '../../widgets/booking_list/booked_items.dart';
 import '../../widgets/booking_list/booking_calendar_container.dart';
 
 // Utils
 import '../../utils/responsive_utils/booking_list/calender_list_util.dart';
 
-class BookingCalender extends StatefulWidget {
-  const BookingCalender({super.key});
+class BookingCalenderScreen extends StatefulWidget {
+  const BookingCalenderScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _BookingCalenderState createState() => _BookingCalenderState();
 }
 
-class _BookingCalenderState extends State<BookingCalender> {
+class _BookingCalenderState extends State<BookingCalenderScreen> {
   late final ValueNotifier<List<BookingSummary>> _selectedEvents;
   final ValueNotifier<DateTime> _focusedDay = ValueNotifier(DateTime.now());
   final Set<DateTime> _selectedDays = LinkedHashSet<DateTime>(
@@ -45,6 +44,11 @@ class _BookingCalenderState extends State<BookingCalender> {
         _selectedEvents.value = events;
         _isLoading = false;
       });
+    }).catchError((e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error fetching bookings: $e');
     });
   }
 
@@ -69,11 +73,6 @@ class _BookingCalenderState extends State<BookingCalender> {
       for (final d in days) ..._getEventsForDay(d),
     ];
   }
-
-  // List<BookingSummary> _getEventsForRange(DateTime start, DateTime end) {
-  //   final days = daysInRange(start, end);
-  //   return _getEventsForDays(days);
-  // }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
@@ -101,36 +100,32 @@ class _BookingCalenderState extends State<BookingCalender> {
 
   void _onPageChanged(DateTime focusedDay) {
     _focusedDay.value = focusedDay;
+    setState(() {
+      _isLoading = true;
+    });
     fetchBookingsForFocusedMonth(_focusedDay.value).then((events) {
       setState(() {
         _selectedEvents.value = events;
         _isLoading = false;
       });
+    }).catchError((e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error fetching bookings for month: $e');
     });
   }
 
-  // void _addItem() async {
-  //   final newItem = await Navigator.of(context).push<Booking>(
-  //     MaterialPageRoute(
-  //       builder: (ctx) => const NewBooking(),
-  //     ),
-  //   );
-  // }
-
   @override
   Widget build(BuildContext context) {
-    Widget content = const Center(child: Text('Searching for bookings .... '));
-    if (_isLoading) {
-      content = const Center(child: CircularProgressIndicator());
-    } else if (_selectedEvents.value.isEmpty) {
-      content =
-          const Center(child: Text('No bookings found or an error occurred'));
-    } else {
-      content = ResponsiveBookingListUtils.isWideScreen(context)
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Bookings Calendar'),
+      ),
+      body: ResponsiveBookingListUtils.isWideScreen(context)
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Calendar Section
                 SizedBox(
                   width: MediaQuery.of(context).size.width *
                       ResponsiveBookingListUtils.getCalendarWidthRatioNew(
@@ -175,59 +170,60 @@ class _BookingCalenderState extends State<BookingCalender> {
                             },
                           ),
                           TableCalendar<BookingSummary>(
-                              firstDay: kFirstDay,
-                              lastDay: kLastDay,
-                              focusedDay: _focusedDay.value,
-                              headerVisible: true,
-                              selectedDayPredicate: (day) =>
-                                  _selectedDays.contains(day),
-                              rangeStartDay: _rangeStart,
-                              rangeEndDay: _rangeEnd,
-                              calendarFormat: _calendarFormat,
-                              rangeSelectionMode: _rangeSelectionMode,
-                              eventLoader: _getEventsForDay,
-                              // holidayPredicate: (day) {
-                              //   // Every 20th day of the month will be treated as a holiday
-                              //   return day.day == 20;
-                              // },
-                              onDaySelected: _onDaySelected,
-                              onRangeSelected: _onRangeSelected,
-                              onCalendarCreated: (controller) =>
-                                  _pageController = controller,
-                              onPageChanged: (focusedDay) =>
-                                  _onPageChanged(focusedDay),
-                              onFormatChanged: (format) {
-                                if (_calendarFormat != format) {
-                                  setState(() => _calendarFormat = format);
-                                }
-                              },
-                              calendarStyle: const CalendarStyle(
-                                markersAlignment: Alignment.bottomRight,
-                              ),
-                              calendarBuilders: CalendarBuilders(
-                                markerBuilder: (context, day, events) =>
-                                    events.isNotEmpty
-                                        ? Container(
-                                            width: 24,
-                                            height: 24,
-                                            alignment: Alignment.center,
-                                            decoration: const BoxDecoration(
-                                              color: Colors.lightBlue,
-                                            ),
-                                            child: Text(
-                                              '${events.length}',
-                                              style: const TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                          )
-                                        : null,
-                              )),
+                            firstDay: kFirstDay,
+                            lastDay: kLastDay,
+                            focusedDay: _focusedDay.value,
+                            headerVisible: true,
+                            selectedDayPredicate: (day) =>
+                                _selectedDays.contains(day),
+                            rangeStartDay: _rangeStart,
+                            rangeEndDay: _rangeEnd,
+                            calendarFormat: _calendarFormat,
+                            rangeSelectionMode: _rangeSelectionMode,
+                            eventLoader: _getEventsForDay,
+                            onDaySelected: _onDaySelected,
+                            onRangeSelected: _onRangeSelected,
+                            onCalendarCreated: (controller) =>
+                                _pageController = controller,
+                            onPageChanged: (focusedDay) =>
+                                _onPageChanged(focusedDay),
+                            onFormatChanged: (format) {
+                              if (_calendarFormat != format) {
+                                setState(() => _calendarFormat = format);
+                              }
+                            },
+                            calendarStyle: const CalendarStyle(
+                              markersAlignment: Alignment.bottomRight,
+                            ),
+                            calendarBuilders: CalendarBuilders(
+                              markerBuilder: (context, day, events) =>
+                                  events.isNotEmpty
+                                      ? Container(
+                                          width: 24,
+                                          height: 24,
+                                          alignment: Alignment.center,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.lightBlue,
+                                          ),
+                                          child: Text(
+                                            '${events.length}',
+                                            style: const TextStyle(
+                                                color: Colors.white),
+                                          ),
+                                        )
+                                      : null,
+                            ),
+                          ),
+                          if (_isLoading)
+                            const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(),
+                            )
                         ],
                       ),
                     ),
                   ),
                 ),
-                // Task List Section (50% width)
                 Expanded(
                   child: Padding(
                     padding:
@@ -235,10 +231,10 @@ class _BookingCalenderState extends State<BookingCalender> {
                     child: ValueListenableBuilder<List<BookingSummary>>(
                       valueListenable: _selectedEvents,
                       builder: (context, value, _) {
-                        if (value.isEmpty) {
+                        if (value.isEmpty && !_isLoading) {
                           return const Center(
                             child: Text(
-                              'No bookings available',
+                              'No bookings available for selected date',
                               style: TextStyle(fontSize: 16.0),
                             ),
                           );
@@ -343,15 +339,20 @@ class _BookingCalenderState extends State<BookingCalender> {
                         : null,
                   ),
                 ),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(),
+                  ),
                 const SizedBox(height: 8.0),
                 Expanded(
                   child: ValueListenableBuilder<List<BookingSummary>>(
                     valueListenable: _selectedEvents,
                     builder: (context, value, _) {
-                      if (value.isEmpty) {
+                      if (value.isEmpty && !_isLoading) {
                         return const Center(
                           child: Text(
-                            'No bookings available',
+                            'No bookings available for selected date',
                             style: TextStyle(fontSize: 16.0),
                           ),
                         );
@@ -379,16 +380,7 @@ class _BookingCalenderState extends State<BookingCalender> {
                   ),
                 ),
               ],
-            );
-    }
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookings calender'),
-        // actions: [
-        //   IconButton(onPressed: _addItem, icon: const Icon(Icons.car_crash)),
-        // ]
-      ),
-      body: content,
+            ),
     );
   }
 }

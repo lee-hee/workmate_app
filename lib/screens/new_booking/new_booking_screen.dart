@@ -39,8 +39,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
   bool _isSearchingByRego = true;
   bool _hasOpenBooking = false;
   List<Map<String, dynamic>> _searchResults = [];
-  List<Map<String, dynamic>> _serviceItems = []; // Added services
-  List<Map<String, dynamic>> _serviceOffers = []; // Predefined offers
+  List<Map<String, dynamic>> _serviceItems = [];
+  List<Map<String, dynamic>> _serviceOffers = [];
   Map<String, dynamic>? _selectedServiceOffer;
   String? _selectedBookingRef;
   DateTime? _selectedBookingDateTime;
@@ -51,23 +51,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     _regoController.text = widget.rego;
     _phone = widget.customerPhone;
     if (widget.rego.isNotEmpty) {
-      _fetchVehicleByRego(widget.rego).then((vehicle) async {
-        if (vehicle.isNotEmpty) {
-          setState(() {
-            _makeController.text = vehicle['make'] ?? '';
-            _modelController.text = vehicle['model'] ?? '';
-          });
-          if (_phone.isEmpty && vehicle['customerId'] != null) {
-            _phone = await _fetchCustomerPhone(vehicle['customerId']);
-          }
-          _loadServiceOffers(
-              vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
-          _checkOpenBooking(widget.rego);
-        } else if (widget.rego.isNotEmpty) {
-          CustomSnackBar.showMessageSnackBar(
-              context, 'Vehicle not found: ${widget.rego}');
-        }
-      });
+      _loadVehicleAndBooking(widget.rego);
     }
   }
 
@@ -81,7 +65,42 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     super.dispose();
   }
 
-  // Fetch customer phone by customerId
+  // Vehicle loading logic
+  Future<void> _loadVehicleAndBooking(String rego) async {
+    if (rego.isEmpty) {
+      CustomSnackBar.showMessageSnackBar(context, 'Rego cannot be empty');
+      return;
+    }
+    final vehicle = await _fetchVehicleByRego(rego);
+    print('Vehicle fetched for rego $rego: $vehicle');
+    if (vehicle.isNotEmpty) {
+      final make = vehicle['make'] ?? 'None';
+      final model = vehicle['model'] ?? 'None';
+
+      setState(() {
+        _makeController.text = make;
+        _modelController.text = model;
+      });
+
+      // Fetch phone if needed
+      String newPhone = _phone;
+      if (newPhone.isEmpty && vehicle['customerId'] != null) {
+        newPhone = await _fetchCustomerPhone(vehicle['customerId']);
+        print('Fetched customer phone: $newPhone');
+      }
+
+      setState(() {
+        _phone = newPhone;
+        print('Phone set in state: $_phone');
+      });
+
+      await _loadServiceOffers(make, model);
+      await _checkOpenBooking(rego);
+    } else if (rego.isNotEmpty) {
+      CustomSnackBar.showMessageSnackBar(context, 'Vehicle not found: $rego');
+    }
+  }
+
   Future<String> _fetchCustomerPhone(int customerId) async {
     final url = BackendConfig.getUri('v1/customer/id/$customerId');
     try {
@@ -89,21 +108,22 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       print('GET $url: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final customer = json.decode(response.body);
-        return customer['phone'] ?? '';
+        final phone = customer['phone'] ?? '';
+        print('Customer phone fetched: $phone');
+        return phone;
       }
+      print('No customer found for customerId: $customerId');
       return '';
     } catch (e) {
+      print('Error fetching customer for customerId $customerId: $e');
       CustomSnackBar.showMessageSnackBar(
           context, 'Error fetching customer: $e');
       return '';
     }
   }
 
-  // Fetch vehicle details by rego
   Future<Map<String, dynamic>> _fetchVehicleByRego(String rego) async {
-    if (rego.isEmpty) {
-      return {};
-    }
+    if (rego.isEmpty) return {};
     final url = BackendConfig.getUri('v1/vehicle/$rego');
     try {
       final response = await http.get(url);
@@ -117,7 +137,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Fetch all vehicles by phone number
   Future<void> _fetchVehiclesByPhone(String phone) async {
     final url = BackendConfig.getUri('v1/vehicles-by-phone/$phone');
     try {
@@ -143,7 +162,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Fetch predefined service items by make and model
   Future<void> _loadServiceOffers(String make, String model) async {
     final url = BackendConfig.getUri('config/service-offers/$make/$model');
     try {
@@ -168,30 +186,24 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
             _selectedServiceOffer = _serviceOffers[0];
           }
         });
-        // Fallback to general if empty and not already general
-        if (_serviceOffers.isEmpty && make != 'None' && model != 'None') {
+        if (_serviceOffers.isEmpty && make != 'None') {
           await _loadServiceOffers('None', 'None');
         }
+      } else if (make != 'None') {
+        await _loadServiceOffers('None', 'None');
       } else {
-        // If specific fails and not general, try general
-        if (make != 'None' && model != 'None') {
-          await _loadServiceOffers('None', 'None');
-        } else {
-          CustomSnackBar.showMessageSnackBar(
-              context, 'No service offers available');
-        }
+        CustomSnackBar.showMessageSnackBar(
+            context, 'No service offers available');
       }
     } catch (e) {
       CustomSnackBar.showMessageSnackBar(
           context, 'Error loading service offers: $e');
-      // Fallback on error
-      if (make != 'None' && model != 'None') {
+      if (make != 'None') {
         await _loadServiceOffers('None', 'None');
       }
     }
   }
 
-  // Check if there is an open booking for the rego
   Future<void> _checkOpenBooking(String rego) async {
     if (rego.isEmpty) {
       setState(() {
@@ -235,7 +247,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Fetch existing service items for a bookingRef
   Future<void> _fetchServiceItems(String bookingRef) async {
     final url = BackendConfig.getUri('v1/booking/$bookingRef/service-items');
     try {
@@ -263,8 +274,8 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Create booking with selected service item ids and date time
   Future<void> _createBooking() async {
+    print('Creating booking with phone: $_phone');
     if (_hasOpenBooking) {
       CustomSnackBar.showMessageSnackBar(
           context, 'Cannot create new booking: Open booking exists.');
@@ -281,7 +292,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       return;
     }
     if (_phone.isEmpty) {
-      // check phone exists
       CustomSnackBar.showMessageSnackBar(
           context, 'Customer phone number is missing.');
       return;
@@ -305,8 +315,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         final bookingRef = decoded['bookingReferenceNumber'];
-        // CustomSnackBar.showSuccess(
-        //     context, 'Booking created successfully! Ref: $bookingRef');
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -316,17 +324,14 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
-                  _cancelForm(); // Move form clearing and navigation here
+                  _cancelForm();
                 },
                 child: const Text('OK'),
               ),
             ],
           ),
         );
-        // Refresh after create
         await _checkOpenBooking(_regoController.text);
-        // Navigate or clear form as needed
-        // _cancelForm();
       } else {
         CustomSnackBar.showMessageSnackBar(
             context, 'Failed to create booking: ${response.statusCode}');
@@ -336,7 +341,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Add selected service to list
   void _addServiceItem() {
     if (_hasOpenBooking) {
       CustomSnackBar.showMessageSnackBar(
@@ -362,7 +366,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Remove a service item from the list
   void _removeServiceItem(int index) {
     setState(() {
       _serviceItems.removeAt(index);
@@ -384,7 +387,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     Navigator.of(context).pop();
   }
 
-  // Search vehicle details by rego or phone
   void _performSearch() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) {
@@ -395,25 +397,12 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     setState(() {
       _searchResults.clear();
     });
+
     if (_isSearchingByRego) {
-      final vehicle = await _fetchVehicleByRego(query);
-      if (vehicle.isNotEmpty) {
-        setState(() {
-          _regoController.text = query;
-          _makeController.text = vehicle['make'] ?? '';
-          _modelController.text = vehicle['model'] ?? '';
-          _searchResults.clear();
-        });
-        if (vehicle['customerId'] != null) {
-          _phone = await _fetchCustomerPhone(vehicle['customerId']);
-        }
-        await _loadServiceOffers(
-            vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
-        await _checkOpenBooking(query);
-      } else {
-        CustomSnackBar.showMessageSnackBar(
-            context, 'Vehicle not found: $query');
-      }
+      setState(() {
+        _regoController.text = query;
+      });
+      await _loadVehicleAndBooking(query);
     } else {
       setState(() {
         _phone = query;
@@ -422,17 +411,13 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     }
   }
 
-  // Select a vehicle from search results (for phone search)
   void _selectSearchResult(Map<String, dynamic> vehicle) {
     setState(() {
       _regoController.text = vehicle['rego'] ?? '';
-      _makeController.text = vehicle['make'] ?? '';
-      _modelController.text = vehicle['model'] ?? '';
       _searchResults.clear();
       _serviceItems.clear();
     });
-    _loadServiceOffers(vehicle['make'] ?? 'None', vehicle['model'] ?? 'None');
-    _checkOpenBooking(vehicle['rego']);
+    _loadVehicleAndBooking(vehicle['rego']);
   }
 
   Future<void> _pickBookingDateTime() async {
@@ -475,7 +460,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // ---------- SEARCH BAR ----------
                 Row(
                   children: [
                     Expanded(
@@ -486,7 +470,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                               ? 'Search by Vehicle Rego'
                               : 'Search by Customer Phone',
                           suffixIcon: TextButton(
-                            // icon: const Icon(Icons.search),
                             onPressed: _performSearch,
                             child: const Text('Search'),
                           ),
@@ -512,8 +495,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                     ),
                   ],
                 ),
-
-                // ---------- SEARCH RESULTS ----------
                 if (_searchResults.isNotEmpty)
                   ListView.builder(
                     shrinkWrap: true,
@@ -528,8 +509,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                       );
                     },
                   ),
-
-                // ---------- VEHICLE DETAILS ----------
                 Expanded(
                   child: SingleChildScrollView(
                     child: Form(
@@ -565,26 +544,23 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                             ),
                           if (!_hasOpenBooking) ...[
                             const SizedBox(height: 16),
-                            // ---------- SERVICE SELECTION ----------
                             TypeAheadField<Map<String, dynamic>>(
                               textFieldConfiguration: TextFieldConfiguration(
                                 controller: _serviceSearchController,
                                 decoration: InputDecoration(
                                   labelText: 'Search Service',
                                   border: const OutlineInputBorder(),
-                                  // Add button inside the text field
                                   suffixIcon: (_selectedServiceOffer != null ||
                                           _serviceSearchController
                                               .text.isNotEmpty)
                                       ? TextButton(
-                                          // icon: const Icon(Icons.add, size: 20),
                                           onPressed: _addServiceItem,
                                           child: const Text(
                                             'Add',
                                             style: TextStyle(
                                                 color: Colors.teal,
                                                 fontSize: 14),
-                                          ), // Disable if no service selected
+                                          ),
                                         )
                                       : null,
                                 ),
@@ -616,13 +592,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                                 child: Text('No services found'),
                               ),
                             ),
-                            // const SizedBox(height: 8),
-                            // ElevatedButton(
-                            //   onPressed: _addServiceItem,
-                            //   child: const Text('Add Service'),
-                            // ),
                           ],
-                          // ---------- ADDED / EXISTING SERVICE ITEMS ----------
                           if (_serviceItems.isNotEmpty) ...[
                             const Padding(
                               padding: EdgeInsets.fromLTRB(16, 8, 0, 8),
@@ -641,7 +611,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                                   title: Text(item['serviceName']),
                                   subtitle: Text(
                                       'Price: \$${item['servicePrice']} | Duration: ${item['serviceDurationMinutes']} min'),
-                                  // Service item removal button
                                   trailing: _hasOpenBooking
                                       ? null
                                       : IconButton(
@@ -658,7 +627,6 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
                           ],
                           if (!_hasOpenBooking) ...[
                             const SizedBox(height: 16),
-                            // ---------- BOOKING DATE TIME ----------
                             GestureDetector(
                               onTap: _pickBookingDateTime,
                               child: InputDecorator(

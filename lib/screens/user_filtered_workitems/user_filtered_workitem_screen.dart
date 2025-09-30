@@ -8,7 +8,7 @@ import '../../model/work_item.dart';
 import '../../model/user.dart';
 
 // Widgets
-import '../filtered_workitems/filtered_workitem_tile.dart';
+import '../../widgets/user_filtered_workitems/filtered_workitem_tile.dart';
 
 // Config
 import '../../config/backend_config.dart';
@@ -157,7 +157,7 @@ class _FilteredWorkItemScreenState extends State<FilteredWorkItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('View work items for user'),
+        title: const Text('View Work Items for User'),
       ),
       body: Align(
         alignment: FilteredWorkItemUtils.getAlignment(context), //web

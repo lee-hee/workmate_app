@@ -4,6 +4,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Camera access -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to your camera to upload images.</string>
+
+	<!-- Photo library access -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to upload images.</string>
+
+	<!-- Photo library add only (for saving) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	
+	<string>This app needs access to save photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow workmate to select images from your phone</string>
 	<key>NSCameraUsageDescription</key>

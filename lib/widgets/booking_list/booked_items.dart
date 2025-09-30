@@ -10,7 +10,7 @@ import '../../model/service_item.dart';
 import '../../model/work_item.dart';
 
 // Widgets
-import '../../widgets/work_item/work_item.dart';
+import '../../screens/work_item_manage/work_item_manage_screen.dart';
 import '../booking_list/booking_calendar_container.dart';
 
 // Utils
@@ -21,10 +21,12 @@ class BookingDescription extends StatefulWidget {
     super.key,
     required this.rego,
     required this.bookingEntries,
+    this.showAll = false,
   });
 
   final String rego;
   final List<BookingEntry> bookingEntries;
+  final bool showAll;
 
   @override
   _BookingDescriptionState createState() => _BookingDescriptionState();
@@ -40,7 +42,6 @@ class _BookingDescriptionState extends State<BookingDescription> {
   }
 
   Future<void> _fetchServiceOffers() async {
-    // Skip fetching if serviceItemIds are empty to avoid unnecessary calls
     List<dynamic> serviceOfferIds = widget.bookingEntries
         .map((entry) => entry.serviceItemIds)
         .expand((listEntry) => listEntry)
@@ -85,84 +86,159 @@ class _BookingDescriptionState extends State<BookingDescription> {
 
   @override
   Widget build(BuildContext context) {
-    final isAbbreviated = ResponsiveBookingListUtils.isMobileOrTablet(context);
-    final visibleEntries =
-        isAbbreviated ? widget.bookingEntries.take(1) : widget.bookingEntries;
+    final entriesToShow = widget.showAll
+        ? widget.bookingEntries
+        : widget.bookingEntries.take(1).toList();
 
     return Padding(
-      padding:
-          ResponsiveBookingListUtils.getDescriptionPaddingWidthAware(context),
+      padding: widget.showAll
+          ? const EdgeInsets.all(8.0)
+          : ResponsiveBookingListUtils.getDescriptionPaddingWidthAware(context),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Center(
-              child: Text(
-                'Vehicle Rego: ${widget.rego}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            if (widget.showAll)
+              Center(
+                child: Text(
+                  'Vehicle Rego: ${widget.rego}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            if (!widget.showAll)
+              Center(
+                child: Text(
+                  'Vehicle Rego: ${widget.rego}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            SizedBox(height: widget.showAll ? 16.0 : 2.0),
+            Text(
+              'Work Items',
+              style: TextStyle(
+                fontSize: widget.showAll ? 15 : 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 2.0),
-            const Text(
-              'Pending Work Items',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            for (int i = 0; i < visibleEntries.length; i++)
+            const SizedBox(height: 4.0),
+            for (int i = 0; i < entriesToShow.length; i++)
               FutureBuilder<List<WorkItem>>(
-                future: _fetchWorkItemsForBooking(
-                    visibleEntries.elementAt(i).bookingRef),
+                future: _fetchWorkItemsForBooking(entriesToShow[i].bookingRef),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.only(top: 2.0),
-                      child: Text('Loading...'),
+                    return Padding(
+                      padding: EdgeInsets.only(top: widget.showAll ? 4.0 : 2.0),
+                      child: const Text('Loading...'),
                     );
                   }
                   if (snapshot.hasError) {
                     print(
                         'Error in _fetchWorkItemsForBooking: ${snapshot.error}');
-                    return const Padding(
-                      padding: EdgeInsets.only(top: 2.0),
-                      child: Text('Error loading work items'),
+                    return Padding(
+                      padding: EdgeInsets.only(top: widget.showAll ? 4.0 : 2.0),
+                      child: const Text('Error loading work items'),
                     );
                   }
                   final workItems = snapshot.data ?? [];
-                  final pendingItems = workItems
-                      .where(
-                          (wi) => wi.workItemStatus.toUpperCase() == 'PENDING')
-                      .toList();
                   print(
-                      'Pending work items for BookingRef: ${visibleEntries.elementAt(i).bookingRef}: ${pendingItems.map((wi) => "${wi.serviceName}, Status: ${wi.workItemStatus}").toList()}');
+                      'Work items for BookingRef: ${entriesToShow[i].bookingRef}: ${workItems.map((wi) => "${wi.serviceName}, Status: ${wi.workItemStatus}").toList()}');
+
+                  if (workItems.isEmpty) {
+                    return Padding(
+                      padding: EdgeInsets.only(top: widget.showAll ? 4.0 : 2.0),
+                      child: const Text('No work items'),
+                    );
+                  }
+
+                  // Show only first work item in list view
+                  if (!widget.showAll) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Text(
+                        '1 - ${workItems.first.serviceName} (${workItems.first.workItemStatus})',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }
+
+                  // Show all work items in popup
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: pendingItems.isNotEmpty
-                        ? pendingItems.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final workItem = entry.value;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 2.0),
-                              child: Text(
-                                '${index + 1} - ${workItem.serviceName}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                    children: workItems.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final workItem = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8.0),
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                    vertical: 4.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: workItem.getIconColorBasedOnStatus(),
+                                    borderRadius: BorderRadius.circular(4.0),
+                                  ),
+                                  child: Text(
+                                    workItem.workItemStatus,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '#${index + 1}',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8.0),
+                            Text(
+                              workItem.serviceName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
-                            );
-                          }).toList()
-                        : [
-                            const Padding(
-                              padding: EdgeInsets.only(top: 2.0),
-                              child: Text('No pending work items'),
+                            ),
+                            const SizedBox(height: 4.0),
+                            Text(
+                              'Assigned To: ${workItem.assignedUserName}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
                             ),
                           ],
+                        ),
+                      );
+                    }).toList(),
                   );
                 },
               ),
-            if (isAbbreviated && widget.bookingEntries.length > 1)
+            if (!widget.showAll && widget.bookingEntries.length > 1)
               Padding(
                 padding: const EdgeInsets.only(top: 1.0),
                 child: Text(
@@ -249,6 +325,7 @@ class _BookingListItemState extends State<BookingListItem> {
               serviceItems.map((item) => item['id'].toString()).toList();
           updatedEntries.add(BookingEntry(
             entry.phone,
+            entry.customerName,
             entry.bookingRef,
             serviceItemIds,
             entry.bookingTime,
@@ -276,25 +353,23 @@ class _BookingListItemState extends State<BookingListItem> {
 
   void _showWorkItemsPopup(BuildContext context) {
     final isMobile = ResponsiveBookingListUtils.isMobileOrTablet(context);
+    final bookingEntries = updatedBookingEntries.isNotEmpty
+        ? updatedBookingEntries
+        : widget.bookingEntries;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        Widget dialogContent = AlertDialog(
-          title: Text(
-            'Work Items for ${widget.rego}',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+        final dialogContent = AlertDialog(
           content: SizedBox(
-            height: 300.0,
-            width: isMobile ? double.maxFinite : 400,
+            height: 400.0,
+            width: isMobile ? double.maxFinite : 450,
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : BookingDescription(
                     rego: widget.rego,
-                    bookingEntries: updatedBookingEntries.isNotEmpty
-                        ? updatedBookingEntries
-                        : widget.bookingEntries,
+                    bookingEntries: bookingEntries,
+                    showAll: true,
                   ),
           ),
           actions: [
@@ -307,11 +382,9 @@ class _BookingListItemState extends State<BookingListItem> {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (ctx) => WorkItemPage(
+                    builder: (ctx) => WorkItemManageScreen(
                       rego: widget.rego,
-                      bookingEntries: updatedBookingEntries.isNotEmpty
-                          ? updatedBookingEntries
-                          : widget.bookingEntries,
+                      bookingEntries: bookingEntries,
                     ),
                   ),
                 );
@@ -338,6 +411,10 @@ class _BookingListItemState extends State<BookingListItem> {
 
   @override
   Widget build(BuildContext context) {
+    final bookingEntries = updatedBookingEntries.isNotEmpty
+        ? updatedBookingEntries
+        : widget.bookingEntries;
+
     return GestureDetector(
       onTap: () => _showWorkItemsPopup(context),
       child: SizedBox(
@@ -345,20 +422,15 @@ class _BookingListItemState extends State<BookingListItem> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            Column(
-              children: <Widget>[
-                Expanded(
-                  child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : BookingDescription(
-                          rego: widget.rego,
-                          bookingEntries: updatedBookingEntries.isNotEmpty
-                              ? updatedBookingEntries
-                              : widget.bookingEntries,
-                        ),
-                ),
-              ],
-            )
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : BookingDescription(
+                      rego: widget.rego,
+                      bookingEntries: bookingEntries,
+                      showAll: false,
+                    ),
+            ),
           ],
         ),
       ),

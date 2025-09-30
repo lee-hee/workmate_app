@@ -62,7 +62,6 @@ class _ServiceItemListState extends State<ServiceItemList> {
     setState(() {
       filteredWorkItems = widget.workItems.where((wi) {
         final matchesRego = wi.rego == widget.rego;
-        final isPending = wi.workItemStatus.toUpperCase() == 'PENDING';
         final matchesBookingRef = widget.bookingEntries.any((entry) {
           final match = entry.bookingRef.trim().toUpperCase() ==
               wi.uniqueBookingRefIdentifier.trim().toUpperCase();
@@ -73,8 +72,8 @@ class _ServiceItemListState extends State<ServiceItemList> {
           return match;
         });
         print(
-            'WorkItem: ${wi.serviceName}, Rego: ${wi.rego}, Status: ${wi.workItemStatus}, BookingRef: ${wi.uniqueBookingRefIdentifier}, Matches: Rego=$matchesRego, Pending=$isPending, BookingRef=$matchesBookingRef');
-        return matchesRego && isPending;
+            'WorkItem: ${wi.serviceName}, Rego: ${wi.rego}, Status: ${wi.workItemStatus}, BookingRef: ${wi.uniqueBookingRefIdentifier}, Matches: Rego=$matchesRego, BookingRef=$matchesBookingRef');
+        return matchesRego && matchesBookingRef;
       }).toList();
       print(
           'Filtered workItems in ServiceItemList: ${filteredWorkItems.map((wi) => "${wi.serviceName}: \$${wi.cost}, Rego: ${wi.rego}, BookingRef: ${wi.uniqueBookingRefIdentifier}, Status: ${wi.workItemStatus}").toList()}');
@@ -106,11 +105,10 @@ class _ServiceItemListState extends State<ServiceItemList> {
                 ))
             .where((wi) {
           final matchesRego = wi.rego == widget.rego;
-          final isPending = wi.workItemStatus.toUpperCase() == 'PENDING';
           final matchesBookingRef = widget.bookingEntries.any((entry) =>
               entry.bookingRef.trim().toUpperCase() ==
               wi.uniqueBookingRefIdentifier.trim().toUpperCase());
-          return matchesRego && isPending;
+          return matchesRego && matchesBookingRef;
         }).toList();
         setState(() {
           filteredWorkItems = updatedWorkItems;
@@ -159,11 +157,10 @@ class _ServiceItemListState extends State<ServiceItemList> {
                 ))
             .where((wi) {
           final matchesRego = wi.rego == widget.rego;
-          final isPending = wi.workItemStatus.toUpperCase() == 'PENDING';
           final matchesBookingRef = widget.bookingEntries.any((entry) =>
               entry.bookingRef.trim().toUpperCase() ==
               wi.uniqueBookingRefIdentifier.trim().toUpperCase());
-          return matchesRego && isPending; // Relaxed for consistency
+          return matchesRego && matchesBookingRef;
         }).toList();
         setState(() {
           filteredWorkItems = updatedWorkItems;
@@ -179,32 +176,22 @@ class _ServiceItemListState extends State<ServiceItemList> {
     }
   }
 
-  DateTime calculateStartTime(int index) {
-    DateTime start = currentStartTime;
-    final workItemsByRego =
-        filteredWorkItems.where((wi) => wi.rego == widget.rego).toList();
-    for (int i = 0; i < index && i < workItemsByRego.length; i++) {
-      final duration = Duration(minutes: workItemsByRego[i].duration);
-      start = start.add(duration);
-    }
-    return start;
-  }
-
   DateTime? calculatePickupTime() {
     final workItemsByRego =
         filteredWorkItems.where((wi) => wi.rego == widget.rego).toList();
     if (workItemsByRego.isEmpty) return null;
     final lastWorkItem = workItemsByRego.last;
-    DateTime end = lastWorkItem.startedDateTime.isNotEmpty
+    DateTime endTime = lastWorkItem.startedDateTime.isNotEmpty
         ? DateTime.parse(lastWorkItem.startedDateTime)
         : currentStartTime;
     final totalDuration =
         workItemsByRego.fold(0, (sum, wi) => sum + wi.duration);
-    return end.add(Duration(minutes: totalDuration));
+    return endTime.add(Duration(minutes: totalDuration));
   }
 
   @override
   Widget build(BuildContext context) {
+    final pickupTime = calculatePickupTime();
     return SizedBox(
       width: ResponsiveWorkItemUtils.getServiceItemListWidth(context),
       height: ResponsiveWorkItemUtils.getServiceItemListHeight(context),
@@ -215,16 +202,11 @@ class _ServiceItemListState extends State<ServiceItemList> {
           border: Border.all(color: const Color.fromARGB(255, 48, 144, 97)),
         ),
         child: filteredWorkItems.isEmpty
-            ? const Center(child: Text('No pending work items available'))
+            ? const Center(child: Text('No work items available'))
             : ListView.builder(
                 itemCount: filteredWorkItems.length,
                 itemBuilder: (ctx, index) {
                   final workItem = filteredWorkItems[index];
-                  final startTime = workItem.startedDateTime.isNotEmpty
-                      ? DateTime.parse(workItem.startedDateTime)
-                      : calculateStartTime(index);
-                  final endTime =
-                      startTime.add(Duration(minutes: workItem.duration));
                   final zebraColor = index % 2 == 0
                       ? Colors.blue.shade100
                       : Colors.transparent;
@@ -233,56 +215,56 @@ class _ServiceItemListState extends State<ServiceItemList> {
                     color: zebraColor,
                     child: ListTile(
                       leading: workItem.id != -1
-                          ? workItem.getIconBasedOnStatus()
+                          ? Icon(
+                              workItem.getIconBasedOnStatus().icon,
+                              color: workItem.getIconColorBasedOnStatus(),
+                            )
                           : null,
                       title: Text(
-                        '${workItem.serviceName} - \$${workItem.cost.toStringAsFixed(2)} - Approx: ${DateFormat('HH:mm').format(startTime)} (${workItem.duration}m)',
+                        workItem.workItemStatus.toUpperCase() == 'PENDING'
+                            ? '${workItem.serviceName} - \$${workItem.cost.toStringAsFixed(2)} - ${workItem.duration}m'
+                            : 'Assigned: ${workItem.assignedUserName} - ${workItem.serviceName} - \$${workItem.cost.toStringAsFixed(2)} - ${workItem.duration}m',
                         style: TextStyle(
                             color: workItem.getIconColorBasedOnStatus()),
                       ),
                       subtitle: Text(
-                        'Pickup Approx: ${DateFormat('HH:mm').format(endTime)}',
+                        'Pickup Approx: ${pickupTime != null ? DateFormat('yyyy-MM-dd HH:mm').format(pickupTime) : 'Not set'}',
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (workItem.id != -1 &&
-                              workItem.startedDateTime.isEmpty &&
-                              workItem.workItemStatus.toUpperCase() ==
-                                  'ASSIGNED')
-                            IconButton(
-                              icon: const Icon(Icons.play_arrow),
-                              onPressed: () => startWorkItem(workItem.id),
-                            ),
-                          DropdownButton<int>(
-                            hint: const Text('Select User'),
-                            value: workItem.assignedUserName.isNotEmpty &&
-                                    widget.selectableUsers.any((u) =>
-                                        u.name == workItem.assignedUserName)
-                                ? widget.selectableUsers
-                                    .firstWhere((u) =>
-                                        u.name == workItem.assignedUserName)
-                                    .id
-                                : null,
-                            onChanged: workItem.id != -1 &&
-                                    workItem.workItemStatus.toUpperCase() ==
-                                        'PENDING'
-                                ? (userId) {
-                                    if (userId != null) {
-                                      _assignUserToWorkItem(
-                                          workItem.id, userId);
+                      trailing: workItem.workItemStatus.toUpperCase() ==
+                              'PENDING'
+                          ? DropdownButton<int>(
+                              hint: const Text('Select User'),
+                              value: workItem.assignedUserName.isNotEmpty &&
+                                      widget.selectableUsers.any((u) =>
+                                          u.name == workItem.assignedUserName)
+                                  ? widget.selectableUsers
+                                      .firstWhere((u) =>
+                                          u.name == workItem.assignedUserName)
+                                      .id
+                                  : null,
+                              onChanged: workItem.id != -1 &&
+                                      workItem.workItemStatus.toUpperCase() ==
+                                          'PENDING'
+                                  ? (userId) {
+                                      if (userId != null) {
+                                        _assignUserToWorkItem(
+                                            workItem.id, userId);
+                                      }
                                     }
-                                  }
-                                : null,
-                            items: widget.selectableUsers.map((user) {
-                              return DropdownMenuItem<int>(
-                                value: user.id,
-                                child: Text(user.name),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
+                                  : null,
+                              items: widget.selectableUsers.map((user) {
+                                return DropdownMenuItem<int>(
+                                  value: user.id,
+                                  child: Text(user.name),
+                                );
+                              }).toList(),
+                            )
+                          : workItem.workItemStatus.toUpperCase() == 'ASSIGNED'
+                              ? IconButton(
+                                  icon: const Icon(Icons.play_arrow),
+                                  onPressed: () => startWorkItem(workItem.id),
+                                )
+                              : null,
                     ),
                   );
                 },

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../model/work_item.dart';
 
 // Widgets
-import '../../widgets/journal/workitem_journal.dart';
+import '../../screens/journal/workitem_journal_screen.dart';
 
 class WorkItemTile extends StatefulWidget {
   const WorkItemTile({super.key, required this.workItem});

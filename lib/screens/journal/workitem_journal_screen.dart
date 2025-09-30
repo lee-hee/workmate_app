@@ -13,8 +13,8 @@ import '../../config/backend_config.dart';
 import '../../utils/responsive_utils/filtered_workitems/journal_entry_util.dart';
 
 // Widgets
-import '../filtered_workitems/work_item_journal_tile.dart';
-import '../filtered_workitems/workitem_journal_entry.dart';
+import '../../widgets/journal/work_item_journal_tile.dart';
+import 'workitem_journal_entry_screen.dart';
 
 class WorkItemJournalScreen extends StatefulWidget {
   final WorkItem selectedWorkItem;
@@ -95,7 +95,7 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
     Navigator.of(context)
         .push(
       MaterialPageRoute(
-        builder: (ctx) => JournalFormPage(
+        builder: (ctx) => JournalFormScreen(
           workItemId: widget.selectedWorkItem.id,
           workItem: widget.selectedWorkItem,
         ),
@@ -138,8 +138,7 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text('Journal Records for ${widget.selectedWorkItem.serviceName}'),
+        title: const Text('Journal Records'),
       ),
       body: Align(
         alignment: ResponsiveJournalUtils.getAlignment(context),
@@ -151,11 +150,11 @@ class _WorkItemJournalScreen extends State<WorkItemJournalScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Work Item: ${widget.selectedWorkItem.serviceName} (Rego: ${widget.selectedWorkItem.rego})',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  // Text(
+                  //   'Work Item: ${widget.selectedWorkItem.serviceName} (Rego: ${widget.selectedWorkItem.rego})',
+                  //   style: const TextStyle(
+                  //       fontSize: 18, fontWeight: FontWeight.bold),
+                  // ),
                   const SizedBox(height: 16),
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())

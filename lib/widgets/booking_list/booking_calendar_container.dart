@@ -1,5 +1,3 @@
-// import 'dart:collection';
-
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -10,17 +8,16 @@ import '../../config/backend_config.dart';
 class Event {
   final String rego;
   final String phone;
+  final String customerName;
   final String bookingRef;
   final String bookingTime;
   final List<dynamic> serviceItemIds;
-  // final String serviceName;
-  // final String servicDuration;
 
-  const Event(this.rego, this.phone, this.bookingRef, this.serviceItemIds,
-      this.bookingTime);
+  const Event(this.rego, this.phone, this.customerName, this.bookingRef,
+      this.serviceItemIds, this.bookingTime);
 
   @override
-  String toString() => rego + phone + bookingRef;
+  String toString() => rego + phone + customerName + bookingRef;
 }
 
 class BookingSummary {
@@ -34,14 +31,13 @@ class BookingSummary {
 
 class BookingEntry {
   final String phone;
+  final String customerName;
   final String bookingRef;
   final String bookingTime;
   final List<dynamic> serviceItemIds;
-  // final String serviceName;
-  // final String servicDuration;
 
-  const BookingEntry(
-      this.phone, this.bookingRef, this.serviceItemIds, this.bookingTime);
+  const BookingEntry(this.phone, this.customerName, this.bookingRef,
+      this.serviceItemIds, this.bookingTime);
 }
 
 final DateFormat serverFormater = DateFormat('yyyy-MM-dd');
@@ -62,21 +58,24 @@ Future fetchBookingsForFocusedMonth(DateTime focusedDay) async {
   final response = await http.get(url);
 
   if (response.statusCode != 200) {
+    print(
+        'Failed to fetch bookings. Status code: ${response.statusCode}, Body: ${response.body}');
     throw Exception('Failed to fetch bookings. Please try again later.');
   }
   final Map bookingsGroupedByDate = json.decode(response.body);
+  print('Bookings response: $bookingsGroupedByDate');
   bookingsGroupedByDate.forEach((key, value) {
     List<BookingSummary> bookingEvents = [];
     for (final bookingSummaryEntry in value) {
       List<dynamic> bookingsForBookingSummary = bookingSummaryEntry['bookings'];
       List<BookingEntry> bookingEntryList = [];
       for (var booking in bookingsForBookingSummary) {
+        print('Processing booking: $booking');
         var bookingEntry = BookingEntry(
             booking['customerPhone'] ?? '',
+            booking['customerName'] ?? 'Unknown',
             booking['bookingReferenceNumber'] ?? '',
             booking['serviceItemIds'] ?? [],
-            // booking['serviceName'],
-            // booking['serviceDuration'],
             booking['bookingDateTime'] ?? '');
         bookingEntryList.add(bookingEntry);
       }

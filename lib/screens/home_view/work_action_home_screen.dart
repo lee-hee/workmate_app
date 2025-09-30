@@ -6,8 +6,8 @@ import '../new_user/add_new_user_screen.dart';
 import '../service_item/service_item_register_screen.dart';
 
 // Widgets
-import '../../widgets/filtered_workitems/filtered_workitem.dart';
-import '../../widgets/booking_list/booking_calendar.dart';
+import '../user_filtered_workitems/user_filtered_workitem_screen.dart';
+import '../booking_list/booking_calendar_screen.dart';
 import '../../widgets/home_view/work_action_grid_item.dart';
 
 // Screens
@@ -28,7 +28,7 @@ class WorkActionHomeScreen extends StatelessWidget {
     if ('new_register' == actionKey) {
       navigatingWidget = const NewRegisterScreen();
     } else if ('list_booking' == actionKey) {
-      navigatingWidget = const BookingCalender();
+      navigatingWidget = const BookingCalenderScreen();
     } else if ('new_booking' == actionKey) {
       navigatingWidget = const NewBookingScreen(
         customerPhone: '',

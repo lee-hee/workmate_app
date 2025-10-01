@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -20,16 +19,16 @@ class FilteredWorkItemScreen extends StatefulWidget {
   const FilteredWorkItemScreen({super.key});
 
   @override
-  State<FilteredWorkItemScreen> createState() {
-    return _FilteredWorkItemScreenState();
-  }
+  State<FilteredWorkItemScreen> createState() => _FilteredWorkItemScreenState();
 }
 
 class _FilteredWorkItemScreenState extends State<FilteredWorkItemScreen> {
-  DateFormat serverDateFormater = DateFormat('yyyy-MM-ddTHH:mm:ss');
+  static const double _padding = 16.0;
+  static const double _spacing = 12.0;
+
   List<WorkItem> workItemsLoaded = [];
   bool _isLoading = false;
-  late User _selectedUser = const User(id: -1, name: '', role: '');
+  User _selectedUser = const User(id: -1, name: '', role: '');
   late Future<List<User>> _loadUsersFuture;
 
   @override
@@ -39,189 +38,176 @@ class _FilteredWorkItemScreenState extends State<FilteredWorkItemScreen> {
   }
 
   Future<List<User>> loadUserData() async {
-    try {
-      final url = BackendConfig.getUri('config/users');
-      final response = await http.get(url);
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch users. Please try again later.');
-      }
-      final List userList = json.decode(response.body);
-      List<User> users = [];
-      for (final entry in userList) {
-        users.add(
-            User(id: entry['id'], name: entry['name'], role: entry['role']));
-      }
-      _selectedUser = users.isNotEmpty ? users.first : _selectedUser;
-      return users;
-    } catch (e) {
-      print('Error loading users: $e');
-      return [];
+    final url = BackendConfig.getUri('config/users');
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch users');
     }
+    final List userList = json.decode(response.body);
+    List<User> users = userList
+        .map((e) => User(id: e['id'], name: e['name'], role: e['role']))
+        .toList();
+    if (users.isNotEmpty) _selectedUser = users.first;
+    return users;
   }
 
   Future<List<WorkItem>> fetchWorkItemsFilteredToUser(User selectedUser) async {
-    try {
-      final url =
-          BackendConfig.getUri('v1/workitem-summary/${selectedUser.id}');
-      print('Fetching work items for user: ${selectedUser.id}');
-      final response = await http.get(url);
-      print('GET $url: ${response.statusCode} - ${response.body}');
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to fetch work items. Status code: ${response.statusCode}');
-      }
-      final List workItems = json.decode(response.body);
-      List<WorkItem> workItemList = [];
-      for (final entry in workItems) {
-        if (entry['id'] == null || entry['id'] <= 0) {
-          print(
-              'Invalid workItemId: ${entry['id']} for service: ${entry['serviceItemDto']?['serviceName']}');
-          continue;
-        }
-        workItemList.add(WorkItem(
-          id: entry['id'],
-          assignedUserName: entry['userDto']?['name'] ?? 'Unassigned',
-          workItemStatus: entry['workItemStatus'] ?? 'PENDING',
-          startedDateTime: entry['startedTime'] ?? '',
-          serviceName: entry['serviceItemDto']?['serviceName'] ?? '',
-          duration: entry['serviceItemDto']?['serviceDurationMinutes'] ?? 0,
-          rego: entry['serviceVehicleDto']?['rego'] ?? '',
-          cost: (entry['serviceItemDto']?['servicePrice'] ?? 0.0).toDouble(),
-          uniqueBookingRefIdentifier: entry['uniqueBookingRefIdentifier'] ?? '',
-        ));
-      }
-      print(
-          'Fetched ${workItemList.length} work items: ${workItemList.map((w) => w.serviceName).toList()}');
-      return workItemList;
-    } catch (e) {
-      print('Error fetching workitems: $e');
-      return [];
+    final url = BackendConfig.getUri('v1/workitem-summary/${selectedUser.id}');
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch work items');
     }
+    final List workItems = json.decode(response.body);
+    return workItems
+        .where((e) => e['id'] != null && e['id'] > 0)
+        .map((entry) => WorkItem(
+              id: entry['id'],
+              assignedUserName: entry['userDto']?['name'] ?? 'Unassigned',
+              workItemStatus: entry['workItemStatus'] ?? 'PENDING',
+              startedDateTime: entry['startedTime'] ?? '',
+              serviceName: entry['serviceItemDto']?['serviceName'] ?? '',
+              duration: entry['serviceItemDto']?['serviceDurationMinutes'] ?? 0,
+              rego: entry['serviceVehicleDto']?['rego'] ?? '',
+              cost:
+                  (entry['serviceItemDto']?['servicePrice'] ?? 0.0).toDouble(),
+              uniqueBookingRefIdentifier:
+                  entry['uniqueBookingRefIdentifier'] ?? '',
+            ))
+        .toList();
   }
 
-  // From workitem_filter.dart
-  void _searchWorkItemsBasedOnUser() {
-    setState(() {
-      _isLoading = true;
-    });
-    fetchWorkItemsFilteredToUser(_selectedUser).then((workItemsFetched) {
+  void _searchWorkItemsBasedOnUser() async {
+    setState(() => _isLoading = true);
+    try {
+      final items = await fetchWorkItemsFilteredToUser(_selectedUser);
       setState(() {
-        workItemsLoaded = workItemsFetched;
+        workItemsLoaded = items;
         _isLoading = false;
       });
-    }).catchError((e) {
+    } catch (e) {
       setState(() {
         _isLoading = false;
         workItemsLoaded = [];
       });
-      print('Error in search: $e');
-    });
-  }
-
-  Widget buildUserSelection(List<User> users) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: 'Select a User',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<User>(
-          isExpanded: true,
-          value: users.isNotEmpty ? _selectedUser : null,
-          items: [
-            for (final user in users)
-              DropdownMenuItem(
-                value: user,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 8.0, horizontal: 12.0),
-                  child:
-                      Text(user.name, style: const TextStyle(fontSize: 18.0)),
-                ),
-              )
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() {
-                _selectedUser = value;
-              });
-            }
-          },
-          hint: const Text('Select a User', style: TextStyle(fontSize: 16.0)),
-        ),
-      ),
-    );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('View Work Items for User'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Work Items'),
+            Text('Filter by User', style: TextStyle(fontSize: 14)),
+          ],
+        ),
       ),
       body: Align(
-        alignment: FilteredWorkItemUtils.getAlignment(context), //web
+        alignment: FilteredWorkItemUtils.getAlignment(context),
         child: SizedBox(
-          width: FilteredWorkItemUtils.getMaxWidth(context), // web
+          width: FilteredWorkItemUtils.getMaxWidth(context),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Select a User to Filter Work Items',
-                    style:
-                        TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.all(_padding),
+            child: Column(
+              children: [
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(_padding),
+                    child: Column(
+                      children: [
+                        FutureBuilder<List<User>>(
+                          future: _loadUsersFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const CircularProgressIndicator();
+                            }
+                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const Text('No users available');
+                            }
+                            return InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'Select User',
+                                prefixIcon: const Icon(Icons.person_outline),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<User>(
+                                  isExpanded: true,
+                                  value: _selectedUser,
+                                  items: snapshot.data!
+                                      .map((user) => DropdownMenuItem(
+                                            value: user,
+                                            child: Text(user.name),
+                                          ))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _selectedUser = value);
+                                    }
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: _spacing),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.close),
+                              label: const Text('Cancel'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: _searchWorkItemsBasedOnUser,
+                              icon: const Icon(Icons.search),
+                              label: const Text('Search'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16.0),
-                  FutureBuilder<List<User>>(
-                    future: _loadUsersFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasData &&
-                          snapshot.data!.isNotEmpty) {
-                        return buildUserSelection(snapshot.data!);
-                      } else {
-                        return const Text('No users available');
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8.0),
-                      ElevatedButton(
-                        onPressed: _searchWorkItemsBasedOnUser,
-                        child: const Text('Search'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16.0),
-                  _isLoading
+                ),
+                const SizedBox(height: _padding),
+                Expanded(
+                  child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : workItemsLoaded.isEmpty
-                          ? const Center(child: Text('No data available'))
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.work_outline,
+                                      size: 64, color: Colors.grey[400]),
+                                  const SizedBox(height: _spacing),
+                                  Text('No work items found',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[600])),
+                                ],
+                              ),
+                            )
                           : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: workItemsLoaded.length,
-                              itemBuilder:
-                                  (BuildContext context, int position) {
-                                return WorkItemTile(
-                                    workItem: workItemsLoaded[position]);
-                              },
+                              itemBuilder: (context, index) => WorkItemTile(
+                                  workItem: workItemsLoaded[index]),
                             ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

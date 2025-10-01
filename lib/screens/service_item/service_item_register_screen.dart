@@ -191,7 +191,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                       child: TextFormField(
                         maxLength: 15,
                         controller: _makeController,
-                        decoration: const InputDecoration(labelText: 'Make'),
+                        decoration: const InputDecoration(labelText: 'Make *'),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a valid make';
@@ -206,7 +206,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                       child: TextFormField(
                         maxLength: 15,
                         controller: _modelController,
-                        decoration: const InputDecoration(labelText: 'Model'),
+                        decoration: const InputDecoration(labelText: 'Model *'),
                         validator: (value) {
                           if (value == null ||
                               value.isEmpty ||
@@ -224,7 +224,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                       child: TextFormField(
                         controller: _serviceNameController,
                         decoration:
-                            const InputDecoration(labelText: 'Service Name'),
+                            const InputDecoration(labelText: 'Service Name *'),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a valid Service Name';
@@ -258,7 +258,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                       child: TextFormField(
                         controller: _servicePriceController,
                         decoration:
-                            const InputDecoration(labelText: 'Price (\$)'),
+                            const InputDecoration(labelText: 'Price (\$) *'),
                         keyboardType: TextInputType.number,
                         validator: (value) {
                           if (value == null ||
@@ -277,7 +277,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
                         onTap: _pickDuration,
                         child: InputDecorator(
                           decoration: InputDecoration(
-                            labelText: 'Duration (Hh:Mm)',
+                            labelText: 'Duration (Hh:Mm) *',
                             border: const OutlineInputBorder(),
                             errorText: _isDurationValid
                                 ? null

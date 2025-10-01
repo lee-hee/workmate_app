@@ -326,7 +326,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                             controller: _phoneController,
                             maxLength: 15,
                             decoration: InputDecoration(
-                              label: const Text('Phone'),
+                              label: const Text('Phone *'),
                               helper: _phoneExistMessage != null
                                   ? Text(
                                       _phoneExistMessage!,
@@ -416,7 +416,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                             controller: _firstNameController,
                             maxLength: 20,
                             decoration: const InputDecoration(
-                                label: Text('First name')),
+                                label: Text('First name *')),
                             validator: (value) {
                               if (value == null ||
                                   value.isEmpty ||
@@ -433,8 +433,8 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                           TextFormField(
                             controller: _lastNameController,
                             maxLength: 20,
-                            decoration:
-                                const InputDecoration(label: Text('Last name')),
+                            decoration: const InputDecoration(
+                                label: Text('Last name *')),
                             validator: (value) {
                               if (value == null ||
                                   value.isEmpty ||
@@ -452,7 +452,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                             controller: _emailController,
                             maxLength: 50,
                             decoration:
-                                const InputDecoration(label: Text('Email')),
+                                const InputDecoration(label: Text('Email *')),
                             validator: (value) {
                               if (value == null ||
                                   value.isEmpty ||
@@ -478,7 +478,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                           TextFormField(
                             maxLength: 6,
                             decoration: InputDecoration(
-                              label: const Text('Rego'),
+                              label: const Text('Rego *'),
                               errorText: _regoError,
                             ),
                             validator: (value) {
@@ -520,7 +520,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                             maxLength: 15,
                             controller: vehicleMakeController,
                             decoration:
-                                const InputDecoration(label: Text('Make')),
+                                const InputDecoration(label: Text('Make *')),
                             validator: (value) {
                               if (value == null ||
                                   value.isEmpty ||
@@ -536,7 +536,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                             maxLength: 15,
                             controller: vehicleModelController,
                             decoration:
-                                const InputDecoration(label: Text('Model')),
+                                const InputDecoration(label: Text('Model *')),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Model is required';
@@ -555,7 +555,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                           TextFormField(
                             maxLength: 20,
                             decoration: const InputDecoration(
-                                label: Text('Body Color')),
+                                label: Text('Body Color *')),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Body color is required';
@@ -567,7 +567,7 @@ class _NewRegisterState extends State<NewRegisterScreen> {
                           TextFormField(
                             maxLength: 17,
                             decoration: const InputDecoration(
-                                label: Text('VIN Number')),
+                                label: Text('VIN Number *')),
                             validator: (value) {
                               if (value == null ||
                                   value.isEmpty ||

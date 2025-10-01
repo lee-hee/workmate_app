@@ -22,6 +22,18 @@ class WorkItem {
   final double cost;
   final String uniqueBookingRefIdentifier;
 
+  static const List<String> statuses = [
+    'ASSIGNED',
+    'STARTED',
+    'PAUSED',
+    'PARTS_ORDERED',
+    'INTERNAL_CONSULT_NEEDED',
+    'EXTERNAL_CONSULT_NEEDED',
+    'COMPLETED',
+    'INVOICED',
+    'PAID',
+  ];
+
   Icon getIconBasedOnStatus() {
     switch (workItemStatus) {
       case 'ASSIGNED':
@@ -47,6 +59,31 @@ class WorkItem {
     }
   }
 
+  // IconData getIconBasedOnStatus() {
+  //   switch (workItemStatus) {
+  //     case 'ASSIGNED':
+  //       return Icons.thumb_up;
+  //     case 'STARTED':
+  //       return Icons.build;
+  //     case 'PAUSED':
+  //       return Icons.error;
+  //     case 'PARTS_ORDERED':
+  //       return Icons.shopping_cart_checkout;
+  //     case 'INTERNAL_CONSULT_NEEDED':
+  //       return Icons.support;
+  //     case 'EXTERNAL_CONSULT_NEEDED':
+  //       return Icons.local_shipping;
+  //     case 'COMPLETED':
+  //       return Icons.check_circle;
+  //     case 'INVOICED':
+  //       return Icons.price_check;
+  //     case 'PAID':
+  //       return Icons.paid;
+  //     default:
+  //       return Icons.warning;
+  //   }
+  // }
+
   String getWorkItemStatusString() {
     switch (workItemStatus) {
       case 'ASSIGNED':
@@ -62,7 +99,7 @@ class WorkItem {
       case 'EXTERNAL_CONSULT_NEEDED':
         return 'waiting for external tech help';
       case 'COMPLETED':
-        return 'is complted';
+        return 'is completed';
       case 'INVOICED':
         return 'is invoiced';
       case 'PAID':
@@ -72,26 +109,50 @@ class WorkItem {
     }
   }
 
+  // Color getIconColorBasedOnStatus() {
+  //   switch (workItemStatus) {
+  //     case 'ASSIGNED':
+  //       return const Color.fromARGB(255, 174, 225, 55);
+  //     case 'STARTED':
+  //       return const Color.fromARGB(255, 57, 188, 37);
+  //     case 'PAUSED':
+  //       return const Color.fromARGB(255, 245, 88, 4);
+  //     case 'PARTS_ORDERED':
+  //       return const Color.fromARGB(255, 66, 234, 231);
+  //     case 'INTERNAL_CONSULT_NEEDED':
+  //       return const Color.fromARGB(255, 6, 142, 51);
+  //     case 'EXTERNAL_CONSULT_NEEDED':
+  //       return const Color.fromARGB(255, 226, 56, 9);
+  //     case 'COMPLETED':
+  //     case 'INVOICED':
+  //     case 'PAID':
+  //       return const Color.fromARGB(255, 4, 247, 37);
+  //     default:
+  //       return const Color.fromARGB(255, 247, 4, 227);
+  //   }
+  // }
   Color getIconColorBasedOnStatus() {
     switch (workItemStatus) {
       case 'ASSIGNED':
-        return const Color.fromARGB(255, 174, 225, 55);
+        return Colors.blue; // info / assigned
       case 'STARTED':
-        return const Color.fromARGB(255, 57, 188, 37);
+        return Colors.green; // active / running
       case 'PAUSED':
-        return const Color.fromARGB(255, 245, 88, 4);
+        return Colors.orange; // warning / paused
       case 'PARTS_ORDERED':
-        return const Color.fromARGB(255, 66, 234, 231);
+        return Colors.indigo; // waiting / ordered
       case 'INTERNAL_CONSULT_NEEDED':
-        return const Color.fromARGB(255, 6, 142, 51);
+        return Colors.teal; // needs support internally
       case 'EXTERNAL_CONSULT_NEEDED':
-        return const Color.fromARGB(255, 226, 56, 9);
+        return Colors.deepOrange; // needs external help
       case 'COMPLETED':
+        return Colors.lightGreen; // task completed
       case 'INVOICED':
+        return Colors.amber; // invoice stage
       case 'PAID':
-        return const Color.fromARGB(255, 4, 247, 37);
+        return Colors.purple; // final stage / done
       default:
-        return const Color.fromARGB(255, 247, 4, 227);
+        return Colors.grey; // fallback / unknown
     }
   }
 }

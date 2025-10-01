@@ -90,6 +90,7 @@ class _ServiceItemRegisterScreenState extends State<ServiceItemRegisterScreen> {
           'serviceDurationMinutes': serviceDurationMinutes,
           'description': description,
           'shortName': shortName,
+          'active': 1, // Default to active
         };
         // Convert the data to JSON format
         final String jsonData = json.encode(data);

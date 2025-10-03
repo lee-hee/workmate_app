@@ -158,13 +158,29 @@ class _BookingDescriptionState extends State<BookingDescription> {
 
                   // Show only first work item in list view
                   if (!widget.showAll) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 2.0),
-                      child: Text(
-                        '1 - ${workItems.first.serviceName} (${workItems.first.workItemStatus})',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Text(
+                            '1 - ${workItems.first.serviceName} (${workItems.first.workItemStatus})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (workItems.length > 1)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 1.0),
+                            child: Text(
+                              '+${workItems.length - 1} more...',
+                              style: const TextStyle(
+                                  fontSize: 10, color: Colors.grey),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
                     );
                   }
 
@@ -237,16 +253,6 @@ class _BookingDescriptionState extends State<BookingDescription> {
                     }).toList(),
                   );
                 },
-              ),
-            if (!widget.showAll && widget.bookingEntries.length > 1)
-              Padding(
-                padding: const EdgeInsets.only(top: 1.0),
-                child: Text(
-                  '+${widget.bookingEntries.length - 1} more...',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
           ],
         ),

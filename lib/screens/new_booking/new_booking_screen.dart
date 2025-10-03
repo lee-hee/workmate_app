@@ -72,10 +72,10 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
       return;
     }
     final vehicle = await _fetchVehicleByRego(rego);
-    print('Vehicle fetched for rego $rego: $vehicle');
+    // print('Vehicle fetched for rego $rego: $vehicle');
     if (vehicle.isNotEmpty) {
-      final make = vehicle['make'] ?? 'None';
-      final model = vehicle['model'] ?? 'None';
+      final make = (vehicle['make'] ?? 'None').trim();
+      final model = (vehicle['model'] ?? 'None').trim();
 
       setState(() {
         _makeController.text = make;
@@ -105,7 +105,7 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     final url = BackendConfig.getUri('v1/customer/id/$customerId');
     try {
       final response = await http.get(url);
-      print('GET $url: ${response.statusCode} - ${response.body}');
+      // print('GET $url: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final customer = json.decode(response.body);
         final phone = customer['phone'] ?? '';
@@ -166,8 +166,10 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
     final url = BackendConfig.getUri('config/service-offers/$make/$model');
     try {
       final response = await http.get(url);
+      // print('GET $url: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final serviceOffersData = json.decode(response.body) as List;
+        // print('Service offers for $make/$model: $serviceOffersData');
         setState(() {
           _serviceOffers = serviceOffersData
               .map((item) => {
@@ -187,15 +189,20 @@ class _NewBookingScreenState extends State<NewBookingScreen> {
           }
         });
         if (_serviceOffers.isEmpty && make != 'None') {
+          // print(
+          //     'No service offers for $make/$model, falling back to None/None');
           await _loadServiceOffers('None', 'None');
         }
       } else if (make != 'None') {
+        // print(
+        //     'Failed to load service offers for $make/$model: ${response.statusCode}');
         await _loadServiceOffers('None', 'None');
       } else {
         CustomSnackBar.showMessageSnackBar(
             context, 'No service offers available');
       }
     } catch (e) {
+      // print('Error loading service offers for $make/$model: $e');
       CustomSnackBar.showMessageSnackBar(
           context, 'Error loading service offers: $e');
       if (make != 'None') {
